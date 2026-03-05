@@ -1,0 +1,130 @@
+/* General Reset */
+body {
+    margin: 0;
+    padding: 0;
+    background-color: black;
+    font-family: Arial, sans-serif;
+    display: flex;
+    height: 100vh;
+    /* overflow: hidden; Prevents overall page scroll */
+}
+
+/* Container Styling */
+.reg-container {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    color: white;
+}
+
+/* Left Section (Logo) */
+.logo-container {
+    flex: 2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: black;
+    height: 100vh;
+    position: fixed; /* Fixes the logo in place */
+    width: 40%; /* Controls the width of the left section */
+}
+
+.logo {
+    max-width: 50%;
+    height: auto;
+}
+
+/* Right Section (Scrollable Form) */
+.form-container {
+    flex: 3;
+    width: 50%; /* Form section takes up remaining space */
+    margin-left: 45%;
+    /* margin-right: 30%; Pushes form to the right side */
+    height: 100vh;
+    padding: 40px;
+    overflow-y: auto; /* Enables scrolling only for the form */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+/* Form Heading */
+.form-container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 30px;
+}
+
+/* Labels */
+.form-container label {
+    display: block;
+    margin: 10px 0 5px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* Input Fields */
+.form-container input{
+    color: white;
+}
+.form-container input,
+.form-container select {
+    width: 77%;
+    padding: 12px;
+    margin-bottom: 15px;
+    background-color: rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 5px;
+    /* color: white; */
+    outline: none;
+    transition: 0.3s;
+}
+
+/* Dropdown Styling */
+.form-container select {
+    width: 80%;
+    background-color: rgba(255, 255, 255, 0.25); /* Updated background color */
+    /* color: white; */
+    cursor: pointer;
+    font-weight: bold
+}
+
+/* Placeholder Styling */
+.form-container input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Input Hover & Focus */
+.form-container input:focus,
+.form-container select:focus {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: white;
+}
+
+/* Submit Button */
+.form-container input[type="submit"] {
+    background-color: #ff9800;
+    color: black;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    transition: 0.3s;
+    padding: 12px;
+    border-radius: 5px;
+}
+
+.form-container input[type="submit"]:hover {
+    background-color: #e68900;
+}
+
+/* Responsive Design */
+@media screen and (max-width: 768px) {
+    .logo-container {
+        display: none; /* Hide logo on mobile */
+    }
+
+    .form-container {
+        width: 100%;
+        margin-left: 0;
+        padding: 20px;
+    }
+}

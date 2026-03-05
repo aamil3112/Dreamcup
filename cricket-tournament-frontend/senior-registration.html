@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Senior Registration Form</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="reg-container">
+        <div class="logo-container">
+            <img src="res/backdrop/logo.png" alt="Logo" class="logo">
+        </div>
+        <div class="form-container">
+            <h2>Junior Registration Form</h2>
+            <form id="registrationForm" action="#" method="post" enctype="multipart/form-data">
+                <label for="fullname">Full Name:</label>
+                <input type="text" id="fullname" name="fullname" required>
+                
+                <label for="mobilenumber">Mobile Number:</label>
+                <input type="tel" id="mobilenumber" name="mobilenumber" required>
+                
+                <label for="dob">Date of Birth:</label>
+                <input type="date" id="dob" name="dob" required>
+
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
+
+                <label for="passportpic">Passport Size Pic:</label>
+                <input type="file" id="passportpic" name="passportpic" accept="image/*" required>
+
+                <label for="aadhaar">Adhaar Card:</label>
+                <input type="file" id="aadhaar" name="aadhaar" accept="image/*,application/pdf" required>
+
+                <label for="role">Playing Role:</label>
+                <select id="role" name="role" required>
+                    <option value="bowler">Bowler</option>
+                    <option value="batsman">Batsman</option>
+                    <option value="wicketkeeper">Wicketkeeper</option>
+                    <option value="allrounder">Allrounder</option>
+                </select>
+
+                <label for="batting">Batting (L/R):</label>
+                <select id="batting" name="batting" required>
+                    <option value="left">Left</option>
+                    <option value="right">Right</option>
+                </select>
+
+                <label for="bowling">Bowling Style:</label>
+                <select id="bowling" name="bowling">
+                    <option value="right_fast">Right Fast</option>
+                    <option value="right_medium">Right Medium</option>
+                    <option value="left_fast">Left Fast</option>
+                    <option value="left_medium">Left Medium</option>
+                    <option value="right_spin">Right Spin</option>
+                    <option value="left_spin">Left Spin</option>
+                </select>
+
+                <label for="batting_order">Batting Order:</label>
+                <select id="batting_order" name="batting_order" required>
+                    <option value="upper">Upper</option>
+                    <option value="middle">Middle</option>
+                    <option value="lower">Lower</option>
+                </select>
+
+                <!-- <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+
+                <label for="confirm_password">Confirm Password:</label>
+                <input type="password" id="confirm_password" name="confirm_password" required> -->
+
+                <input type="submit" value="Submit">
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById("registrationForm").addEventListener("submit", async function(e) {
+            e.preventDefault();
+            
+            document.querySelector('input[type="submit"]').value = "Submitting...";
+
+            let formData = new FormData(this);
+            let object = {};
+
+            for (let [key, value] of formData.entries()) {
+                if (value instanceof File) {
+                    let reader = new FileReader();
+                    reader.readAsDataURL(value);
+                    reader.onload = function () {
+                        object[key] = reader.result.split(',')[1];
+                    };
+                } else {
+                    object[key] = value;
+                }
+            }
+
+            setTimeout(async () => {
+                let response = await fetch("https://script.google.com/macros/s/AKfycbwd146VzhI3nm-8nZc4XgSyHbCVKHPt7ViC0atC2BPgFKiTy4vAy8a2CUPaArX9etV0fg/exec", {
+                    method: "POST",
+                    body: new URLSearchParams(object),
+                });
+
+                let result = await response.text();
+                alert(result);
+            }, 1000);
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,274 @@
+[33mcommit a5423e2c527e4a86319adf0caad9a3f6e10e771e[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m)[m
+Author: sarman03 <sarmanpreets.it.22@nitj.ac.in>
+Date:   Thu Feb 27 22:25:07 2025 +0530
+
+    forms
+
+[33mcommit 6ac4ac6e10decbbe83b2310de29808913010ff46[m
+Author: aamil3112 <140998883+aamil3112@users.noreply.github.com>
+Date:   Mon Apr 15 22:45:31 2024 +0530
+
+    Update CNAME
+
+[33mcommit eab6ebc4068f01e9f407911cc975bc93b26c3a2e[m
+Author: aamil3112 <aamilkhan00111@gmail.com>
+Date:   Mon Apr 15 18:28:59 2024 +0530
+
+    INitial commit
+
+[33mcommit 8ea7f7cb7e8ea597e7b5a5354cd39856a0ae0a5d[m
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Mon Nov 13 00:51:48 2023 +0530
+
+    Code optimization
+
+[33mcommit 0f9fdeaae959a94d2af53b8c7bc9d95d0a7d69de[m
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Sun Oct 29 02:02:29 2023 +0530
+
+    Update index.html
+
+[33mcommit 5ec0e4d2ce83799a4b4be44f5fa9e9c3b7a11bdf[m
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Sun Oct 29 01:58:53 2023 +0530
+
+    Update index.html
+
+[33mcommit 77bddcc7a941c42608890b3fd439f3bb42c233be[m
+Merge: bbdcf81 5c8a60c
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Sun Oct 29 01:56:13 2023 +0530
+
+    Merge branch 'main' of https://github.com/c-d-a-o/cdao-site
+
+[33mcommit bbdcf818a50ecf0a613280b95f8223a2611e809d[m
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Sun Oct 29 01:55:45 2023 +0530
+
+    Update index.html
+
+[33mcommit 5c8a60ce732f7d1631cb2101246f0af5dbdd1797[m
+Merge: 668f4df 9e4c299
+Author: Chetan Mittal <128130436+ichetanmittal@users.noreply.github.com>
+Date:   Sun Oct 29 01:51:39 2023 +0530
+
+    Merge pull request #7 from Andotrium/main
+    
+    Removed all the institute references in the site
+
+[33mcommit 9e4c2997acebe7c94b8045c1270ad476c942b9e8[m
+Author: Pratham <59961114+Andotrium@users.noreply.github.com>
+Date:   Sun Oct 29 01:15:10 2023 +0530
+
+    Removed all the NITJ references in the site, so that the site is more generic for all colleges instead of being NITJ specific
+
+[33mcommit 668f4df22a9330cace731a3003fe34b0e08f1789[m
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Sun Oct 29 00:27:39 2023 +0530
+
+    Domain name
+
+[33mcommit cae906c96e12faa0aeb15152964f4e939fc8cfd0[m
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Sat Oct 28 20:35:13 2023 +0530
+
+    Website Restructuring initiated
+
+[33mcommit 232d5b03784575b251715341c59c0397b344f7c0[m
+Author: Chetan Mittal <128130436+ichetanmittal@users.noreply.github.com>
+Date:   Mon Oct 23 13:59:57 2023 +0530
+
+    Update README.md
+
+[33mcommit 97d084b27589a931f2dd5ce045cf9df4a4b45e85[m
+Author: Chetan Mittal <128130436+ichetanmittal@users.noreply.github.com>
+Date:   Mon Oct 23 13:59:25 2023 +0530
+
+    Update README.md
+
+[33mcommit 9b03a29a1010bd776c88d01230e841c715b3f922[m
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Mon Oct 23 13:53:47 2023 +0530
+
+    twitter username changed
+
+[33mcommit 89c82d45a0401dcaa6b8a9e589a366fc0d44f17e[m
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Mon Oct 23 13:52:45 2023 +0530
+
+    Chapter lead updation
+
+[33mcommit 1af1116f6e8c66feed2f8bc45518134a8253acaa[m
+Author: acdevs <amanchandra.in@gmail.com>
+Date:   Sun Aug 27 20:27:39 2023 +0530
+
+    updates.
+
+[33mcommit dcecbc5ce4d6839cb5b22c50aed40fb5b0e257bb[m
+Merge: 0686440 53a2934
+Author: acdevs <amanchandra.in@gmail.com>
+Date:   Sun Aug 27 18:49:38 2023 +0530
+
+    Merge branch 'main' of https://github.com/c-d-a-o/cdao-site
+
+[33mcommit 0686440d61d236f748e96c7ba3bead6c44134935[m
+Author: acdevs <amanchandra.in@gmail.com>
+Date:   Sun Aug 27 18:49:17 2023 +0530
+
+    just pull updates.
+
+[33mcommit 53a2934684d262abde441d4ff0fc9257f7b8a5e6[m
+Merge: c43e0bd 5482104
+Author: Chetan Mittal <128130436+ichetanmittal@users.noreply.github.com>
+Date:   Sun Aug 27 17:43:12 2023 +0530
+
+    Merge pull request #4 from capy-on-caffeine/zbyte_card
+    
+    Adding event card for zbyte bootcamp
+
+[33mcommit 548210403e9e0c50feab7aaa05ef0284da4d579e[m
+Author: Arnav Anand <124515922+capy-on-caffeine@users.noreply.github.com>
+Date:   Sun Aug 27 17:25:26 2023 +0530
+
+    Added registration link
+
+[33mcommit 47f9beadd12d98d1aeb4573fbae0e9861f688013[m
+Author: Arnav Anand <124515922+capy-on-caffeine@users.noreply.github.com>
+Date:   Sun Aug 27 17:23:10 2023 +0530
+
+    zbyte poster
+
+[33mcommit 701fa9b3f08c26587f23ec7ed708296b6f1ea8c4[m
+Author: Arnav Anand <124515922+capy-on-caffeine@users.noreply.github.com>
+Date:   Sun Aug 27 17:21:20 2023 +0530
+
+    Added zbyte event card
+
+[33mcommit c43e0bd970c56f9985f4ed638149c3261690cc50[m
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Mon Aug 7 01:39:34 2023 +0530
+
+    Ideathon Changes
+
+[33mcommit b1aed244f60b99ff4707622b7d01730f84a2e16f[m
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Sun Jul 30 19:20:53 2023 +0530
+
+    Partner Updated
+
+[33mcommit 61effa32fb2328d1d4d1bcf22a33499ced4728d2[m
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Sun Jul 23 02:28:28 2023 +0530
+
+    Social Media Updation by adding youtube tag
+
+[33mcommit 01e892f61ce2d9d513a102e8b5111933a5bfb702[m
+Merge: 7a06a76 c6f7f8d
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Thu Jul 20 19:46:37 2023 +0530
+
+    Merge branch 'main' of https://github.com/c-d-a-o/cdao-site
+
+[33mcommit 7a06a769c67c66b666f0f238c3c4c672df678590[m
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Thu Jul 20 19:40:36 2023 +0530
+
+    Chapter lead updated
+
+[33mcommit c6f7f8dbea17c41c8ecdf13cd7507f93aca48070[m
+Merge: 4896961 5acfe06
+Author: Aman Chandra <46893171+acdevs@users.noreply.github.com>
+Date:   Sat Jul 15 15:33:16 2023 +0530
+
+    Merge pull request #2 from c-d-a-o/chetan
+    
+    updating FAO's
+
+[33mcommit 5acfe0662a2dd1e30e996d4aca75c977908f5ce1[m
+Merge: c91aea5 4896961
+Author: Aman Chandra <46893171+acdevs@users.noreply.github.com>
+Date:   Sat Jul 15 15:32:56 2023 +0530
+
+    Merge branch 'main' into chetan
+
+[33mcommit c91aea5b48ed5fae0d9a19ef8f1dd3c18dbae749[m
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Sat Jul 15 13:58:12 2023 +0530
+
+    updating FAO's
+
+[33mcommit 4896961e3daffa8fb6db443b2b38c759e5187e65[m
+Author: acdevs <amanchandra.in@gmail.com>
+Date:   Sat Jul 15 05:33:10 2023 +0530
+
+    partners modified.
+
+[33mcommit 6d8e79888582f0033dd1b6b29d40d363c4b6d719[m
+Author: acdevs <amanchandra.in@gmail.com>
+Date:   Sat Jul 15 04:09:05 2023 +0530
+
+    partners modified.
+
+[33mcommit 4edb72b73f6013526bbf50468d1eb45fec798b26[m
+Author: acdevs <amanchandra.in@gmail.com>
+Date:   Fri Jul 14 21:55:59 2023 +0530
+
+    updating...
+
+[33mcommit 929c8715c30ccac42f435c3c051cedb19e556841[m
+Author: acdevs <amanchandra.in@gmail.com>
+Date:   Fri Jul 14 21:49:07 2023 +0530
+
+    updating...
+
+[33mcommit 4771183f4f7439e6347c714f6cbee3b56c016f16[m
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Fri Jul 14 20:16:20 2023 +0530
+
+    Added Our Partners Section
+
+[33mcommit 9eefd67a289a56fc935f504a4280eb1be4116053[m
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Fri Jul 14 17:23:44 2023 +0530
+
+    Mail Id Updated
+
+[33mcommit 6052b13fcf9bd754a8e0a4341e2672ac94f350c1[m
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Fri Jul 14 17:06:55 2023 +0530
+
+    FAQ changes
+
+[33mcommit 446d3402cc48fece2d6eec44a58d981886866258[m
+Author: Chetan Mittal <chetanm.it.22@nitj.ac.in>
+Date:   Fri Jul 14 17:05:49 2023 +0530
+
+    Adding Partnerships section
+
+[33mcommit f5aed546b3f9ba4db6d3d5610684f0bdbbcc7dec[m
+Author: acdevs <amanchandra.in@gmail.com>
+Date:   Wed Jul 12 11:43:13 2023 +0530
+
+    cdao 2.0 updates.
+
+[33mcommit dd79a7859bf50a008e163dc0ad3edcaa3cdefbb4[m
+Author: acdevs <amanchandra.in@gmail.com>
+Date:   Wed Jul 12 11:35:34 2023 +0530
+
+    cdao 2.0 updates.
+
+[33mcommit 17291dfc3014369e01d8347e0f4869b9493d446a[m
+Author: acdevs <amanchandra.in@gmail.com>
+Date:   Wed Jul 12 10:07:00 2023 +0530
+
+    cdao 2.0 updates.
+
+[33mcommit f305b91519ec0fc10d5f3e907710591f0eba9bd0[m
+Author: acdevs <amanchandra.in@gmail.com>
+Date:   Wed Jul 12 09:43:49 2023 +0530
+
+    cdao 2.0 updates.
+
+[33mcommit a6b81b139aae994fc6cc4250e7da934e39850b8d[m
+Author: acdevs <amanchandra.in@gmail.com>
+Date:   Wed Jul 12 08:34:38 20

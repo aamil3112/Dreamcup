@@ -1,0 +1,227 @@
+/* Reset default styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Wix Madefor Display', sans-serif;
+  background-color: #000;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+  width: 100%;
+}
+
+#root {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  overflow-x: hidden;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* App-specific styles */
+.loading-screen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 1.5rem;
+  font-weight: bold;
+  background-color: #000;
+  color: white;
+}
+
+/* The rest of the styling is loaded dynamically from the public/styles directory */
+
+/* Payment Success Modal - Production ready */
+.payment-success-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
+.payment-success-modal {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 2.5rem;
+  border-radius: 16px;
+  text-align: center;
+  max-width: 480px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.payment-success-icon {
+  font-size: 4rem;
+  color: #4caf50;
+  margin-bottom: 1rem;
+}
+
+.payment-success-modal h3 {
+  font-size: 1.75rem;
+  margin-bottom: 1rem;
+  color: #fff;
+}
+
+.payment-success-message,
+.payment-success-thanks {
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.payment-success-id {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+
+.payment-success-btn {
+  margin-top: 1rem;
+  padding: 0.85rem 1.75rem;
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 600;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.payment-success-btn:hover {
+  background: #45a049;
+}
+
+.payment-success-btn:active {
+  transform: scale(0.98);
+}
+
+/* Prize Pool Section */
+.prize-pool-section {
+  padding: 60px 20px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 20, 30, 0.98) 100%);
+}
+
+.prize-pool-title {
+  font-size: 2rem;
+  text-align: center;
+  margin-bottom: 2.5rem;
+  color: #fff;
+}
+
+.prize-pool-cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.prize-card {
+  flex: 1;
+  min-width: 220px;
+  max-width: 280px;
+  padding: 2rem;
+  border-radius: 16px;
+  text-align: center;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.prize-card i {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.prize-winner {
+  background: linear-gradient(135deg, #ffd70033 0%, #b8860b44 100%);
+}
+
+.prize-winner i {
+  color: #ffd700;
+}
+
+.prize-runner {
+  background: linear-gradient(135deg, #c0c0c033 0%, #80808044 100%);
+}
+
+.prize-runner i {
+  color: #c0c0c0;
+}
+
+.prize-entry {
+  background: linear-gradient(135deg, #78398baa 0%, #000000ee 40%);
+}
+
+.prize-entry i {
+  color: #b19cd9;
+}
+
+.prize-card h3 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.prize-amount {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+/* Rules indent */
+.event-details-desc .indent {
+  padding-left: 1.25rem;
+}
+
+/* Slider buttons - clickable container */
+.slider-prev,
+.slider-next {
+  cursor: pointer;
+}
