@@ -139,7 +139,7 @@ export const paymentVerification = async (req, res) => {
 export const submitRegistration = async (req, res) => {
   try {
     const scriptUrl =
-      "https://script.google.com/macros/s/AKfycbwahgLKJK1CN0qNz_4fwAWCZZAgOZVUquQQvZBmoJaheJ13EJaYzQcE2B7xXO_CC29E/exec";
+      "https://script.google.com/macros/s/AKfycbwm-lDzCu5of-lZ-o7mGYQLQnDaE25YdM8Rfyh4vahfzbr-VRvPElztS4ly_ZAa1BcIWQ/exec";
 
     const params = new URLSearchParams();
     Object.entries(req.body || {}).forEach(([key, value]) => {
