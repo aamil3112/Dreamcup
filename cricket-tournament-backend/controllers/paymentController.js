@@ -48,9 +48,19 @@ export const checkout = async (req, res) => {
       customer_id: safeCustomerId,
       customer_name: customerName || "Guest",
       customer_email: customerEmail,
-      customer_phone: customerPhone,
+      customer_phone: (() => {
+        const digitsOnly = String(customerPhone || "").replace(/\D/g, "");
+        return digitsOnly.slice(-10);
+      })(),
     },
   };
+
+  if (!payload.customer_details.customer_phone || payload.customer_details.customer_phone.length !== 10) {
+    return res.status(400).json({
+      success: false,
+      message: "Valid 10-digit customer phone is required",
+    });
+  }
 
   const headers = {
     "x-client-id": process.env.CASHFREE_APP_ID,

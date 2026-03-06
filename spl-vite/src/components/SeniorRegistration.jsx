@@ -91,6 +91,12 @@ const SeniorRegistration = () => {
         return;
       }
 
+      const normalizedPhone = String(formData.mobilenumber || '').replace(/\D/g, '').slice(-10);
+      if (normalizedPhone.length !== 10) {
+        alert('Please enter a valid 10-digit mobile number.');
+        return;
+      }
+
       const cashfree = window.Cashfree({
         // In production, this must be "production" to match your live keys
         mode: "production",
@@ -101,7 +107,7 @@ const SeniorRegistration = () => {
         amount,
         customerName: formData.fullname,
         customerEmail: formData.email,
-        customerPhone: formData.mobilenumber,
+        customerPhone: normalizedPhone,
       });
 
       if (!data?.success) {
@@ -155,7 +161,8 @@ const SeniorRegistration = () => {
       });
     } catch (error) {
       console.error('Error initiating payment:', error);
-      alert('Error initiating payment. Please try again.');
+      const serverMessage = error?.response?.data?.message || error?.response?.data?.error?.message;
+      alert(serverMessage ? `Payment error: ${serverMessage}` : 'Error initiating payment. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
