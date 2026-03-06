@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:4000');
 
 const SeniorRegistration = () => {
   const navigate = useNavigate();
@@ -102,13 +102,23 @@ const SeniorRegistration = () => {
         mode: "production",
       });
 
-      // Create order on backend and get payment session
-      const { data } = await axios.post(`${API_BASE_URL}/api/checkout`, {
+      const checkoutPayload = {
         amount,
         customerName: formData.fullname,
         customerEmail: formData.email,
         customerPhone: normalizedPhone,
-      });
+      };
+
+      // Create order on backend and get payment session (retry once for cold-start/network hiccups)
+      let data;
+      try {
+        const res = await axios.post(`${API_BASE_URL}/api/checkout`, checkoutPayload, { timeout: 15000 });
+        data = res.data;
+      } catch (firstError) {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        const retryRes = await axios.post(`${API_BASE_URL}/api/checkout`, checkoutPayload, { timeout: 15000 });
+        data = retryRes.data;
+      }
 
       if (!data?.success) {
         throw new Error(data?.message || 'Failed to create order');
@@ -162,7 +172,8 @@ const SeniorRegistration = () => {
     } catch (error) {
       console.error('Error initiating payment:', error);
       const serverMessage = error?.response?.data?.message || error?.response?.data?.error?.message;
-      alert(serverMessage ? `Payment error: ${serverMessage}` : 'Error initiating payment. Please try again.');
+      const fallbackMessage = error?.message || error?.response?.statusText;
+      alert(serverMessage ? `Payment error: ${serverMessage}` : fallbackMessage ? `Payment error: ${fallbackMessage}` : 'Error initiating payment. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
