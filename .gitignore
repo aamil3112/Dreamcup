@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+.cache/
+
+.vscode/
+.cursor/
+
+.env
+.env.*
+cricket-tournament-backend/config/config.env
+cricket-tournament-backend/.env
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
