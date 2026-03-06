@@ -24,6 +24,7 @@ const SeniorRegistration = () => {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCashfreeReady, setIsCashfreeReady] = useState(false);
+  const [paymentStatusText, setPaymentStatusText] = useState('');
   const amount = 1; // Registration fee amount in INR (hardcoded)
 
   useEffect(() => {
@@ -104,6 +105,8 @@ const SeniorRegistration = () => {
         mode: "production",
       });
 
+      setPaymentStatusText('Connecting to payment gateway...');
+
       const checkoutPayload = {
         amount,
         customerName: formData.fullname,
@@ -128,6 +131,7 @@ const SeniorRegistration = () => {
 
       const { paymentSessionId, orderId } = data;
 
+      setPaymentStatusText('Opening payment gateway...');
       const result = await cashfree.checkout({
         paymentSessionId,
         // Use SDK modal flow for better mobile browser compatibility
@@ -140,19 +144,6 @@ const SeniorRegistration = () => {
         return;
       }
 
-      // Verify payment on backend using orderId
-      const verifyRes = await axios.post(`${API_BASE_URL}/api/paymentverification`, {
-        orderId,
-      });
-
-      if (!verifyRes.data?.success) {
-        console.error('Payment verification failed:', verifyRes.data);
-        alert('Payment verification failed. Please contact support.');
-        return;
-      }
-
-      const paymentId = verifyRes.data.paymentId;
-
       // Generate registration token: DC26-DDMM-XXXX
       const now = new Date();
       const day = String(now.getDate()).padStart(2, '0');
@@ -160,10 +151,27 @@ const SeniorRegistration = () => {
       const countPart = String(now.getTime()).slice(-4);
       const registrationToken = `DC26-${day}${month}-${countPart}`;
 
-      // Submit to Google Sheets
-      await submitToGoogleSheets(paymentId, registrationToken);
-      
-      // Redirect to home page with success message and token
+      setPaymentStatusText('Checking payment status...');
+      const registrationData = await buildRegistrationPayload(registrationToken);
+
+      // Verify payment and persist registration on backend using orderId
+      const verifyRes = await axios.post(`${API_BASE_URL}/api/paymentverification`, {
+        orderId,
+        registrationData,
+        registrationToken,
+      }, { timeout: 30000 });
+
+      if (!verifyRes.data?.success) {
+        console.error('Payment verification failed:', verifyRes.data);
+        alert(verifyRes.data?.message || 'Payment verification failed. Please contact support.');
+        return;
+      }
+
+      const paymentId = verifyRes.data.paymentId;
+
+      setPaymentStatusText('Saving registration...');
+
+      // Redirect only after payment + registration save is confirmed
       navigate('/', { 
         state: { 
           paymentSuccess: true, 
@@ -178,11 +186,12 @@ const SeniorRegistration = () => {
       alert(serverMessage ? `Payment error: ${serverMessage}` : fallbackMessage ? `Payment error: ${fallbackMessage}` : 'Error initiating payment. Please try again.');
     } finally {
       setIsSubmitting(false);
+      setPaymentStatusText('');
     }
   };
 
-  // Function to submit data to Google Sheets
-  const submitToGoogleSheets = async (paymentId, registrationToken) => {
+  // Build registration payload to be saved by backend after payment verification
+  const buildRegistrationPayload = async (registrationToken) => {
     // Create an object to store form data
     const dataForSheets = {};
     
@@ -202,24 +211,15 @@ const SeniorRegistration = () => {
       }
     }
     
-    // Add payment and tracking data
-    dataForSheets.paymentId = paymentId;
-    dataForSheets.paymentRefId = paymentId;
     dataForSheets.registrationToken = registrationToken;
-    
-    try {
-      // Submit to backend, which forwards to Google Sheets (avoids CORS issues)
-      const response = await axios.post(`${API_BASE_URL}/api/submit-registration`, dataForSheets);
-      console.log('Google Sheets submission result:', response.data);
-    } catch (error) {
-      console.error('Error submitting to Google Sheets:', error);
-      throw error;
-    }
+
+    return dataForSheets;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setPaymentStatusText('Starting payment...');
     
     try {
       // Validate form data here if needed
@@ -351,6 +351,9 @@ const SeniorRegistration = () => {
           </select>
 
           <p className="register-now-text">Register now to confirm your spot.</p>
+          {isSubmitting && paymentStatusText && (
+            <p className="register-now-text" aria-live="polite">{paymentStatusText}</p>
+          )}
 
           <div className="button-container">
             <button 
@@ -358,7 +361,7 @@ const SeniorRegistration = () => {
               className="submit-btn" 
               disabled={isSubmitting || !isCashfreeReady}
             >
-              {isSubmitting ? 'Processing...' : isCashfreeReady ? 'Pay & Register (₹1)' : 'Loading payment...'}
+              {isSubmitting ? paymentStatusText || 'Processing...' : isCashfreeReady ? 'Pay & Register (₹1)' : 'Loading payment...'}
             </button>
             <Link to="/" className="cancel-btn">Cancel</Link>
           </div>

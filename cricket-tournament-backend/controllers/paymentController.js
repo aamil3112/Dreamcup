@@ -1,5 +1,25 @@
 import axios from "axios";
 
+const GOOGLE_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbyxZRAYbTEqoDSbyMK8YODrE-kNN-4ggGf6D3kWgV8iRndJQQCcNg8LXbdEDs9byDa72Q/exec";
+
+const forwardToGoogleSheets = async (payload = {}) => {
+  const params = new URLSearchParams();
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      params.append(key, String(value));
+    }
+  });
+
+  const { data } = await axios.post(GOOGLE_SCRIPT_URL, params.toString(), {
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  });
+
+  return data;
+};
+
 // Helper to get Cashfree API base URL based on environment
 const getCashfreeBaseUrl = () => {
   const env = (process.env.CASHFREE_ENV || "sandbox").toLowerCase();
@@ -90,7 +110,7 @@ export const checkout = async (req, res) => {
 // POST /api/paymentverification
 // Verifies the order status with Cashfree
 export const paymentVerification = async (req, res) => {
-  const { orderId } = req.body;
+  const { orderId, registrationData, registrationToken } = req.body;
 
   if (!orderId) {
     return res.status(400).json({
@@ -123,6 +143,26 @@ export const paymentVerification = async (req, res) => {
         primaryPayment?.payment_id ||
         orderId;
 
+      if (registrationData && typeof registrationData === "object") {
+        const payloadForSheets = {
+          ...registrationData,
+          paymentId,
+          paymentRefId: paymentId,
+          registrationToken: registrationToken || registrationData.registrationToken,
+        };
+
+        try {
+          await forwardToGoogleSheets(payloadForSheets);
+        } catch (sheetError) {
+          console.error("Error saving registration after payment:", sheetError?.response?.data || sheetError.message);
+          return res.status(500).json({
+            success: false,
+            message: "Payment successful, but registration save failed. Please contact support.",
+            paymentId,
+          });
+        }
+      }
+
       return res.status(200).json({
         success: true,
         message: "Payment verified successfully",
@@ -148,21 +188,7 @@ export const paymentVerification = async (req, res) => {
 // Proxy endpoint to submit registration data to Google Sheets without CORS issues
 export const submitRegistration = async (req, res) => {
   try {
-    const scriptUrl =
-      "https://script.google.com/macros/s/AKfycbyxZRAYbTEqoDSbyMK8YODrE-kNN-4ggGf6D3kWgV8iRndJQQCcNg8LXbdEDs9byDa72Q/exec";
-
-    const params = new URLSearchParams();
-    Object.entries(req.body || {}).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        params.append(key, String(value));
-      }
-    });
-
-    const { data } = await axios.post(scriptUrl, params.toString(), {
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-    });
+    const data = await forwardToGoogleSheets(req.body || {});
 
     return res.status(200).json({
       success: true,
