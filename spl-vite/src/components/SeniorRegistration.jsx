@@ -1,6 +1,9 @@
+
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
 
 const SeniorRegistration = () => {
   const navigate = useNavigate();
@@ -90,7 +93,7 @@ const SeniorRegistration = () => {
       });
 
       // Create order on backend and get payment session
-      const { data } = await axios.post('http://localhost:4000/api/checkout', {
+      const { data } = await axios.post(`${API_BASE_URL}/api/checkout`, {
         amount,
         customerName: formData.fullname,
         customerEmail: formData.email,
@@ -116,7 +119,7 @@ const SeniorRegistration = () => {
       }
 
       // Verify payment on backend using orderId
-      const verifyRes = await axios.post('http://localhost:4000/api/paymentverification', {
+      const verifyRes = await axios.post(`${API_BASE_URL}/api/paymentverification`, {
         orderId,
       });
 
@@ -182,7 +185,7 @@ const SeniorRegistration = () => {
     
     try {
       // Submit to backend, which forwards to Google Sheets (avoids CORS issues)
-      const response = await axios.post("http://localhost:4000/api/submit-registration", dataForSheets);
+      const response = await axios.post(`${API_BASE_URL}/api/submit-registration`, dataForSheets);
       console.log('Google Sheets submission result:', response.data);
     } catch (error) {
       console.error('Error submitting to Google Sheets:', error);

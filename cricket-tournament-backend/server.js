@@ -1,7 +1,8 @@
 import { app } from "./app.js";
 
-const PORT = process.env.PORT || 4000;
+// MongoDB is not required when using Google Sheets as the primary data store.
+// The server now runs without establishing a database connection.
 
-app.listen(PORT, () => {
-  console.log(`Server is working on ${PORT}`);
+app.listen(process.env.PORT, () => {
+  console.log(`Server is working on ${process.env.PORT}`);
 });

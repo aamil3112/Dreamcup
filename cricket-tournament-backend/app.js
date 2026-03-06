@@ -6,9 +6,11 @@ config({ path: "./config/config.env" });
 
 export const app = express();
 
-// Configure CORS to allow requests from your frontend
+// Configure CORS: localhost for dev, FRONTEND_URL for production (e.g. Netlify)
+const allowedOrigins = ['http://localhost:5173'];
+if (process.env.FRONTEND_URL) allowedOrigins.push(process.env.FRONTEND_URL);
 app.use(cors({
-  origin: 'http://localhost:5173', // Update this to match your Vite dev server port
+  origin: allowedOrigins,
   methods: ['GET', 'POST'],
   credentials: true
 }));
