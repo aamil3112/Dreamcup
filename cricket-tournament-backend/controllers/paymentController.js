@@ -124,7 +124,7 @@ export const paymentVerification = async (req, res) => {
 export const submitRegistration = async (req, res) => {
   try {
     const scriptUrl =
-      "https://script.google.com/macros/s/AKfycbwC25kWdOn-iYjHFqSX5adDC3c2-eZlz8SNImYQF0szolafKGbtPCuERNIF2m76IMkYMw/exec";
+      "https://script.google.com/macros/s/AKfycbwK4zTYkmBYHHGmnQQrCon3CHOz7-Y-nmS3ku-bMSIrzGERqJJ22s9EBIDiXWckkWcE/exec";
 
     const { data } = await axios.post(scriptUrl, req.body, {
       headers: {
