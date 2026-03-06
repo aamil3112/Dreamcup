@@ -85,7 +85,8 @@ const SeniorRegistration = () => {
       }
 
       const cashfree = window.Cashfree({
-        mode: "sandbox", // use sandbox for TEST keys; switch to "production" when you go live
+        // In production, this must be "production" to match your live keys
+        mode: "production",
       });
 
       // Create order on backend and get payment session
