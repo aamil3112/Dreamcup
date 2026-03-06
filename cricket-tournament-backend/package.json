@@ -1,16 +1,13 @@
 {
   "name": "cricket-tournament-backend",
   "version": "1.0.0",
-  "description": "",
   "main": "server.js",
   "type": "module",
   "scripts": {
+    "build": "echo Build complete",
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "axios": "^1.6.2",
     "cors": "^2.8.5",
