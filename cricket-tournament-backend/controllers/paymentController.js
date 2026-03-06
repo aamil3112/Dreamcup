@@ -9,32 +9,22 @@ const getCashfreeBaseUrl = () => {
 };
 
 // POST /api/checkout
-// Creates a Cashfree order and returns payment session details to the frontend
 export const checkout = async (req, res) => {
   const { amount, customerName, customerEmail, customerPhone } = req.body;
 
   if (!amount) {
-    return res.status(400).json({
-      success: false,
-      message: "Amount is required",
-    });
+    return res.status(400).json({ success: false, message: "Amount is required" });
   }
 
   const orderAmount = Number(amount);
   if (Number.isNaN(orderAmount) || orderAmount <= 0) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid amount",
-    });
+    return res.status(400).json({ success: false, message: "Invalid amount" });
   }
 
   const baseUrl = getCashfreeBaseUrl();
   const url = `${baseUrl}/pg/orders`;
-
-  // Generate a simple unique order ID on our side
   const orderId = `order_${Date.now()}`;
 
-  // Cashfree requires customer_id to be alphanumeric with optional _ or -
   const rawCustomerId = customerEmail || customerPhone || orderId;
   const safeCustomerId =
     (rawCustomerId && rawCustomerId.toString().replace(/[^a-zA-Z0-9_-]/g, "")) ||
@@ -61,7 +51,6 @@ export const checkout = async (req, res) => {
 
   try {
     const { data } = await axios.post(url, payload, { headers });
-
     return res.status(200).json({
       success: true,
       orderId: data.order_id,
@@ -78,15 +67,11 @@ export const checkout = async (req, res) => {
 };
 
 // POST /api/paymentverification
-// Verifies the order status with Cashfree
 export const paymentVerification = async (req, res) => {
   const { orderId } = req.body;
 
   if (!orderId) {
-    return res.status(400).json({
-      success: false,
-      message: "orderId is required for verification",
-    });
+    return res.status(400).json({ success: false, message: "orderId is required for verification" });
   }
 
   const baseUrl = getCashfreeBaseUrl();
@@ -101,7 +86,6 @@ export const paymentVerification = async (req, res) => {
   try {
     const { data } = await axios.get(url, { headers });
 
-    // An order is successful when order_status is PAID
     if (data.order_status === "PAID") {
       const primaryPayment =
         Array.isArray(data.payments) && data.payments.length > 0
@@ -135,29 +119,22 @@ export const paymentVerification = async (req, res) => {
   }
 };
 
-// Proxy endpoint to submit registration data to Google Sheets without CORS issues
+// POST /api/submitregistration
+// Proxy to Google Apps Script — sends JSON so Apps Script can read via e.postData.contents
 export const submitRegistration = async (req, res) => {
   try {
     const scriptUrl =
       "https://script.google.com/macros/s/AKfycbwm-lDzCu5of-lZ-o7mGYQLQnDaE25YdM8Rfyh4vahfzbr-VRvPElztS4ly_ZAa1BcIWQ/exec";
 
-    const params = new URLSearchParams();
-    Object.entries(req.body || {}).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        params.append(key, String(value));
-      }
-    });
-
-    const { data } = await axios.post(scriptUrl, params.toString(), {
+    const { data } = await axios.post(scriptUrl, req.body, {
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Type": "application/json",  // ✅ JSON instead of form-encoded
       },
+      maxBodyLength: 10 * 1024 * 1024,   // ✅ 10MB limit for images
+      maxContentLength: 10 * 1024 * 1024,
     });
 
-    return res.status(200).json({
-      success: true,
-      data,
-    });
+    return res.status(200).json({ success: true, data });
   } catch (error) {
     console.error("Error forwarding registration to Google Sheets:", error?.response?.data || error.message);
     return res.status(500).json({
