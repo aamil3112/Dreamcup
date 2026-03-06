@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -24,22 +23,18 @@ const SeniorRegistration = () => {
   const amount = 1; // Registration fee amount in INR (hardcoded)
 
   useEffect(() => {
-    // Add the CSS link to the head
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = '/styles/styles.css';
     document.head.appendChild(link);
 
-    // Set the title
     document.title = 'Registration Form';
 
-    // Load Cashfree JS SDK
     const cashfreeScript = document.createElement('script');
     cashfreeScript.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
     cashfreeScript.async = true;
     document.body.appendChild(cashfreeScript);
 
-    // Cleanup function
     return () => {
       document.head.removeChild(link);
       if (document.body.contains(cashfreeScript)) {
@@ -52,24 +47,14 @@ const SeniorRegistration = () => {
     const { name, value, type, checked, files } = e.target;
     
     if (type === 'file') {
-      setFormData({
-        ...formData,
-        [name]: files[0]
-      });
+      setFormData({ ...formData, [name]: files[0] });
     } else if (type === 'checkbox') {
-      setFormData({
-        ...formData,
-        [name]: checked
-      });
+      setFormData({ ...formData, [name]: checked });
     } else {
-      setFormData({
-        ...formData,
-        [name]: value
-      });
+      setFormData({ ...formData, [name]: value });
     }
   };
 
-  // Helper function to convert File to base64
   const convertFileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -79,7 +64,7 @@ const SeniorRegistration = () => {
     });
   };
 
-  // Function to initiate Cashfree payment
+  // ✅ FIXED: Use "_modal" so it works on both desktop and mobile
   const initiatePayment = async () => {
     try {
       if (!window.Cashfree) {
@@ -88,11 +73,10 @@ const SeniorRegistration = () => {
       }
 
       const cashfree = window.Cashfree({
-        // In production, this must be "production" to match your live keys
         mode: "production",
       });
 
-      // Create order on backend and get payment session
+      // Create order on backend
       const { data } = await axios.post(`${API_BASE_URL}/api/checkout`, {
         amount,
         customerName: formData.fullname,
@@ -106,10 +90,10 @@ const SeniorRegistration = () => {
 
       const { paymentSessionId, orderId } = data;
 
+      // ✅ "_modal" works on all devices including mobile browsers
       const result = await cashfree.checkout({
         paymentSessionId,
-        // Render checkout inline so we can continue execution after payment
-        redirectTarget: document.getElementById("cf_checkout"),
+        redirectTarget: "_modal",
       });
 
       if (result?.error) {
@@ -118,7 +102,14 @@ const SeniorRegistration = () => {
         return;
       }
 
-      // Verify payment on backend using orderId
+      // ✅ Handle cancelled payment
+      if (result?.paymentDetails?.paymentStatus === "CANCELLED") {
+        alert('Payment was cancelled. Please try again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Verify payment on backend
       const verifyRes = await axios.post(`${API_BASE_URL}/api/paymentverification`, {
         orderId,
       });
@@ -141,7 +132,7 @@ const SeniorRegistration = () => {
       // Submit to Google Sheets
       await submitToGoogleSheets(paymentId, registrationToken);
       
-      // Redirect to home page with success message and token
+      // Redirect to home with success state
       navigate('/', { 
         state: { 
           paymentSuccess: true, 
@@ -157,34 +148,27 @@ const SeniorRegistration = () => {
     }
   };
 
-  // Function to submit data to Google Sheets
   const submitToGoogleSheets = async (paymentId, registrationToken) => {
-    // Create an object to store form data
     const dataForSheets = {};
     
-    // Process form data including file uploads
     for (const key in formData) {
       if (formData[key] instanceof File && formData[key]) {
-        // For file inputs, convert to base64
         try {
           const base64Data = await convertFileToBase64(formData[key]);
-          dataForSheets[key] = base64Data.split(',')[1]; // Remove the data:image/jpeg;base64, part
+          dataForSheets[key] = base64Data.split(',')[1];
         } catch (error) {
           console.error(`Error converting ${key} to base64:`, error);
         }
       } else {
-        // For regular inputs
         dataForSheets[key] = formData[key];
       }
     }
     
-    // Add payment and tracking data
     dataForSheets.paymentId = paymentId;
     dataForSheets.paymentRefId = paymentId;
     dataForSheets.registrationToken = registrationToken;
     
     try {
-      // Submit to backend, which forwards to Google Sheets (avoids CORS issues)
       const response = await axios.post(`${API_BASE_URL}/api/submit-registration`, dataForSheets);
       console.log('Google Sheets submission result:', response.data);
     } catch (error) {
@@ -198,9 +182,6 @@ const SeniorRegistration = () => {
     setIsSubmitting(true);
     
     try {
-      // Validate form data here if needed
-      
-      // Initiate payment
       await initiatePayment();
     } catch (error) {
       console.error('Error submitting form:', error);
@@ -339,10 +320,10 @@ const SeniorRegistration = () => {
             <Link to="/" className="cancel-btn">Cancel</Link>
           </div>
         </form>
-        <div id="cf_checkout"></div>
+        {/* ✅ Removed cf_checkout div — no longer needed with _modal */}
       </div>
     </div>
   );
 };
 
-export default SeniorRegistration; 
+export default SeniorRegistration;
