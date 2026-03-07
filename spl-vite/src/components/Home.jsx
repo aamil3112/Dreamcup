@@ -51,6 +51,14 @@ const Home = () => {
               </p>
             )}
             <p className="payment-success-thanks">Thank you for registering for the DANGER CUP 2026!</p>
+            <a
+              href="https://chat.whatsapp.com/FBifBcz2m7g4Ogt6y5QFEJ"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="payment-success-btn"
+            >
+              Join WhatsApp Group
+            </a>
             <button type="button" className="payment-success-btn" onClick={handlePaymentSuccessClose}>
               Return to Home
             </button>
