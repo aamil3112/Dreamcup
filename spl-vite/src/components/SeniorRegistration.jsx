@@ -25,7 +25,7 @@ const SeniorRegistration = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCashfreeReady, setIsCashfreeReady] = useState(false);
   const [paymentStatusText, setPaymentStatusText] = useState('');
-  const amount = 1; // Testing amount
+  const amount = 360; // Gross amount for ₹350+tax pricing
 
   useEffect(() => {
     // Add the CSS link to the head
