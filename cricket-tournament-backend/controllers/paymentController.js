@@ -1,7 +1,64 @@
 import axios from "axios";
+import { promises as fs } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const GOOGLE_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbyxZRAYbTEqoDSbyMK8YODrE-kNN-4ggGf6D3kWgV8iRndJQQCcNg8LXbdEDs9byDa72Q/exec";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PENDING_REGISTRATIONS_FILE = path.join(__dirname, "..", "data", "pending-registrations.json");
+
+const readPendingRegistrations = async () => {
+  try {
+    const raw = await fs.readFile(PENDING_REGISTRATIONS_FILE, "utf-8");
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return {};
+    }
+    throw error;
+  }
+};
+
+const writePendingRegistrations = async (data) => {
+  await fs.mkdir(path.dirname(PENDING_REGISTRATIONS_FILE), { recursive: true });
+  await fs.writeFile(PENDING_REGISTRATIONS_FILE, JSON.stringify(data, null, 2), "utf-8");
+};
+
+const upsertPendingRegistration = async (orderId, payload) => {
+  const allPending = await readPendingRegistrations();
+  allPending[orderId] = {
+    ...(allPending[orderId] || {}),
+    ...payload,
+    updatedAt: new Date().toISOString(),
+  };
+  await writePendingRegistrations(allPending);
+};
+
+const getPendingRegistration = async (orderId) => {
+  const allPending = await readPendingRegistrations();
+  return allPending[orderId] || null;
+};
+
+const markRegistrationSaved = async (orderId, paymentId) => {
+  const allPending = await readPendingRegistrations();
+  if (!allPending[orderId]) {
+    return;
+  }
+
+  allPending[orderId] = {
+    ...allPending[orderId],
+    status: "REGISTERED",
+    paymentId,
+    savedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  await writePendingRegistrations(allPending);
+};
 
 const forwardToGoogleSheets = async (payload = {}) => {
   const params = new URLSearchParams();
@@ -31,7 +88,14 @@ const getCashfreeBaseUrl = () => {
 // POST /api/checkout
 // Creates a Cashfree order and returns payment session details to the frontend
 export const checkout = async (req, res) => {
-  const { amount, customerName, customerEmail, customerPhone } = req.body;
+  const {
+    amount,
+    customerName,
+    customerEmail,
+    customerPhone,
+    registrationData,
+    registrationToken,
+  } = req.body;
 
   if (!amount) {
     return res.status(400).json({
@@ -92,6 +156,20 @@ export const checkout = async (req, res) => {
   try {
     const { data } = await axios.post(url, payload, { headers });
 
+    if (registrationData && typeof registrationData === "object") {
+      await upsertPendingRegistration(data.order_id, {
+        orderId: data.order_id,
+        registrationToken: registrationToken || registrationData.registrationToken || null,
+        registrationData,
+        amount: orderAmount,
+        customerName: customerName || null,
+        customerEmail: customerEmail || null,
+        customerPhone: payload.customer_details.customer_phone,
+        status: "ORDER_CREATED",
+        createdAt: new Date().toISOString(),
+      });
+    }
+
     return res.status(200).json({
       success: true,
       orderId: data.order_id,
@@ -143,16 +221,28 @@ export const paymentVerification = async (req, res) => {
         primaryPayment?.payment_id ||
         orderId;
 
-      if (registrationData && typeof registrationData === "object") {
+      const pendingRegistration = await getPendingRegistration(orderId);
+      const finalRegistrationData =
+        registrationData && typeof registrationData === "object"
+          ? registrationData
+          : pendingRegistration?.registrationData;
+
+      const finalRegistrationToken =
+        registrationToken ||
+        finalRegistrationData?.registrationToken ||
+        pendingRegistration?.registrationToken;
+
+      if (finalRegistrationData && typeof finalRegistrationData === "object") {
         const payloadForSheets = {
-          ...registrationData,
+          ...finalRegistrationData,
           paymentId,
           paymentRefId: paymentId,
-          registrationToken: registrationToken || registrationData.registrationToken,
+          registrationToken: finalRegistrationToken,
         };
 
         try {
           await forwardToGoogleSheets(payloadForSheets);
+          await markRegistrationSaved(orderId, paymentId);
         } catch (sheetError) {
           console.error("Error saving registration after payment:", sheetError?.response?.data || sheetError.message);
           return res.status(500).json({
@@ -161,6 +251,13 @@ export const paymentVerification = async (req, res) => {
             paymentId,
           });
         }
+      } else {
+        await upsertPendingRegistration(orderId, {
+          orderId,
+          status: "PAID_MISSING_REGISTRATION_DATA",
+          paymentId,
+          paidAt: new Date().toISOString(),
+        });
       }
 
       return res.status(200).json({
@@ -199,6 +296,103 @@ export const submitRegistration = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to submit registration to Google Sheets",
+      error: error?.response?.data || error.message,
+    });
+  }
+};
+
+export const cashfreeWebhook = async (req, res) => {
+  try {
+    const body = req.body || {};
+    const extractedOrderId =
+      body?.data?.order?.order_id ||
+      body?.data?.order_id ||
+      body?.order_id ||
+      body?.orderId;
+
+    if (!extractedOrderId) {
+      return res.status(200).json({
+        success: true,
+        message: "Webhook acknowledged (test/handshake payload without order_id).",
+      });
+    }
+
+    const baseUrl = getCashfreeBaseUrl();
+    const url = `${baseUrl}/pg/orders/${extractedOrderId}`;
+    const headers = {
+      "x-client-id": process.env.CASHFREE_APP_ID,
+      "x-client-secret": process.env.CASHFREE_SECRET_KEY,
+      "x-api-version": "2023-08-01",
+    };
+
+    const { data } = await axios.get(url, { headers });
+
+    if (data.order_status !== "PAID") {
+      await upsertPendingRegistration(extractedOrderId, {
+        orderId: extractedOrderId,
+        status: `WEBHOOK_RECEIVED_${data.order_status}`,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Webhook received. Order not paid yet.",
+      });
+    }
+
+    const primaryPayment =
+      Array.isArray(data.payments) && data.payments.length > 0
+        ? data.payments[0]
+        : null;
+
+    const paymentId =
+      primaryPayment?.cf_payment_id ||
+      primaryPayment?.payment_id ||
+      extractedOrderId;
+
+    const pendingRegistration = await getPendingRegistration(extractedOrderId);
+
+    if (!pendingRegistration?.registrationData) {
+      await upsertPendingRegistration(extractedOrderId, {
+        orderId: extractedOrderId,
+        status: "PAID_MISSING_REGISTRATION_DATA",
+        paymentId,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Paid order received but registration data is missing.",
+      });
+    }
+
+    if (pendingRegistration.status === "REGISTERED") {
+      return res.status(200).json({
+        success: true,
+        message: "Registration already saved for this order.",
+      });
+    }
+
+    const payloadForSheets = {
+      ...pendingRegistration.registrationData,
+      paymentId,
+      paymentRefId: paymentId,
+      registrationToken:
+        pendingRegistration.registrationToken ||
+        pendingRegistration.registrationData.registrationToken,
+    };
+
+    await forwardToGoogleSheets(payloadForSheets);
+    await markRegistrationSaved(extractedOrderId, paymentId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Webhook processed and registration saved.",
+      paymentId,
+    });
+  } catch (error) {
+    console.error("Error processing Cashfree webhook:", error?.response?.data || error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Webhook processing failed",
       error: error?.response?.data || error.message,
     });
   }

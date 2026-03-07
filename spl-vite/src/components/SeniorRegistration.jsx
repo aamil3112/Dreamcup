@@ -122,11 +122,18 @@ const SeniorRegistration = () => {
 
       setPaymentStatusText('Connecting to payment gateway...');
 
+      // Generate registration token format: DDMM00, DDMM01, DDMM02...
+      const registrationToken = generateRegistrationToken();
+      setPaymentStatusText('Preparing registration...');
+      const registrationData = await buildRegistrationPayload(registrationToken);
+
       const checkoutPayload = {
         amount,
         customerName: formData.fullname,
         customerEmail: formData.email,
         customerPhone: normalizedPhone,
+        registrationData,
+        registrationToken,
       };
 
       // Create order on backend and get payment session (retry once for cold-start/network hiccups)
@@ -159,16 +166,11 @@ const SeniorRegistration = () => {
         return;
       }
 
-      // Generate registration token format: DDMM00, DDMM01, DDMM02...
-      const registrationToken = generateRegistrationToken();
-
       setPaymentStatusText('Checking payment status...');
-      const registrationData = await buildRegistrationPayload(registrationToken);
 
       // Verify payment and persist registration on backend using orderId
       const verifyRes = await axios.post(`${API_BASE_URL}/api/paymentverification`, {
         orderId,
-        registrationData,
         registrationToken,
       }, { timeout: 30000 });
 
