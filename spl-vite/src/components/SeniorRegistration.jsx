@@ -25,7 +25,7 @@ const SeniorRegistration = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCashfreeReady, setIsCashfreeReady] = useState(false);
   const [paymentStatusText, setPaymentStatusText] = useState('');
-  const amount = 1; // Registration fee amount in INR (hardcoded)
+  const amount = 360; // Gross amount for ₹350+tax pricing
 
   useEffect(() => {
     // Add the CSS link to the head
@@ -361,7 +361,7 @@ const SeniorRegistration = () => {
               className="submit-btn" 
               disabled={isSubmitting || !isCashfreeReady}
             >
-              {isSubmitting ? paymentStatusText || 'Processing...' : isCashfreeReady ? 'Pay & Register (₹1)' : 'Loading payment...'}
+              {isSubmitting ? paymentStatusText || 'Processing...' : isCashfreeReady ? 'Pay & Register (₹350+tax)' : 'Loading payment...'}
             </button>
             <Link to="/" className="cancel-btn">Cancel</Link>
           </div>

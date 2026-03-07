@@ -123,7 +123,7 @@ const Home = () => {
             <div className="partner-info">
               <img src="/images/partners/Rohit.png" alt="Rohit" className="partner-logo" />
               <div className="partner-details">
-                <p className="partner-description"><strong>ROHIT JAIN</strong></p>
+                <p className="partner-description"><strong>ROHIT ATHIYA</strong></p>
                 
               </div>
             </div>
