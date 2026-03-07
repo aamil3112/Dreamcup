@@ -25,7 +25,7 @@ const SeniorRegistration = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCashfreeReady, setIsCashfreeReady] = useState(false);
   const [paymentStatusText, setPaymentStatusText] = useState('');
-  const amount = 360; // Gross amount for ₹350+tax pricing
+  const amount = 1; // Testing amount
 
   useEffect(() => {
     // Add the CSS link to the head
@@ -86,6 +86,21 @@ const SeniorRegistration = () => {
     });
   };
 
+  const generateRegistrationToken = () => {
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const datePart = `${day}${month}`;
+
+    const storageKey = `dangercup_registration_count_${datePart}`;
+    const lastCount = Number.parseInt(localStorage.getItem(storageKey) || '-1', 10);
+    const nextCount = Number.isNaN(lastCount) ? 0 : lastCount + 1;
+
+    localStorage.setItem(storageKey, String(nextCount));
+
+    return `${datePart}${String(nextCount).padStart(2, '0')}`;
+  };
+
   // Function to initiate Cashfree payment
   const initiatePayment = async () => {
     try {
@@ -144,12 +159,8 @@ const SeniorRegistration = () => {
         return;
       }
 
-      // Generate registration token: DC26-DDMM-XXXX
-      const now = new Date();
-      const day = String(now.getDate()).padStart(2, '0');
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const countPart = String(now.getTime()).slice(-4);
-      const registrationToken = `DC26-${day}${month}-${countPart}`;
+      // Generate registration token format: DDMM00, DDMM01, DDMM02...
+      const registrationToken = generateRegistrationToken();
 
       setPaymentStatusText('Checking payment status...');
       const registrationData = await buildRegistrationPayload(registrationToken);
