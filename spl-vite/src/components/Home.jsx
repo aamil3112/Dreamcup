@@ -6,6 +6,28 @@ const Home = () => {
   const paymentSuccess = location.state?.paymentSuccess;
   const paymentId = location.state?.paymentId;
   const registrationToken = location.state?.registrationToken;
+  const registrationListings = [
+    {
+      title: 'Player Registration',
+      description: 'Individual player entry for DangerCup Local Cricket Tournament.',
+    },
+    {
+      title: 'Team Registration',
+      description: 'Apply for team-level participation in the Damoh local tournament circuit.',
+    },
+    {
+      title: 'Early Entry Registration',
+      description: 'Secure your place early with fast online registration and payment.',
+    },
+    {
+      title: 'Cricket Tournament Entry',
+      description: 'Standard tournament listing for players ready to join the auction format.',
+    },
+    {
+      title: 'League Registration',
+      description: 'League-style listing for registered participants in DangerCup events.',
+    },
+  ];
 
   const handlePaymentSuccessClose = () => {
     navigate('/', { replace: true, state: {} });
@@ -36,6 +58,69 @@ const Home = () => {
           </marquee>
         </div>
       </header>
+
+      <section className="event-overview-section" aria-label="Event overview">
+        <div className="event-overview-card">
+          <h1>DangerCup Local Cricket Tournament</h1>
+          <p>
+            Register online for the DangerCup tournament and pay a participation fee of
+            {' '}
+            <strong>₹360</strong>
+            {' '}
+            through Cashfree Payments. This event is organized for local cricket players in
+            Damoh, Madhya Pradesh, India.
+          </p>
+          <p>
+            <strong>Location:</strong>
+            {' '}
+            Damoh, Madhya Pradesh, India
+            {' | '}
+            <strong>Organizer:</strong>
+            {' '}
+            Animesh Jain
+          </p>
+        </div>
+      </section>
+
+      <section className="tournament-details-section" aria-label="Tournament details">
+        <h2 className="section-title">Tournament Details</h2>
+        <div className="tournament-details-grid">
+          <article className="detail-box">
+            <h3>Registration Fee</h3>
+            <p>₹360</p>
+          </article>
+          <article className="detail-box">
+            <h3>Event Type</h3>
+            <p>Local Cricket Tournament</p>
+          </article>
+          <article className="detail-box">
+            <h3>Location</h3>
+            <p>Damoh, MP</p>
+          </article>
+          <article className="detail-box">
+            <h3>Organizer</h3>
+            <p>Animesh Jain</p>
+          </article>
+          <article className="detail-box">
+            <h3>Contact</h3>
+            <p>+91 70890 90821</p>
+          </article>
+        </div>
+      </section>
+
+      <section className="registration-listings-section" aria-label="Registration listings">
+        <h2 className="section-title">Registration Listings</h2>
+        <div className="registration-listings-grid">
+          {registrationListings.map((listing) => (
+            <article className="registration-listing-card" key={listing.title}>
+              <h3>{listing.title}</h3>
+              <p>{listing.description}</p>
+              <p className="listing-price">₹360</p>
+              <Link to="/registration" className="listing-register-btn">Register / Pay</Link>
+            </article>
+          ))}
+        </div>
+      </section>
 
       {/* Payment Success Modal - Only shown after backend verification */}
       {paymentSuccess && (

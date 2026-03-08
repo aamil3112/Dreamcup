@@ -215,6 +215,119 @@ body {
   font-weight: 700;
 }
 
+.event-overview-section,
+.tournament-details-section,
+.registration-listings-section {
+  padding: 2.5rem 1rem;
+  background: linear-gradient(180deg, #0a0b0f 0%, #10131c 100%);
+}
+
+.event-overview-card {
+  max-width: 960px;
+  margin: 0 auto;
+  text-align: left;
+  background: rgba(13, 18, 28, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  padding: 1.4rem;
+  color: #eef3ff;
+}
+
+.event-overview-card h1 {
+  font-size: 2rem;
+  margin-bottom: 0.8rem;
+  color: #ffffff;
+}
+
+.event-overview-card p {
+  margin-bottom: 0.65rem;
+  line-height: 1.6;
+}
+
+.section-title {
+  color: #fff;
+  font-size: 1.75rem;
+  margin-bottom: 1.3rem;
+}
+
+.tournament-details-grid {
+  max-width: 960px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.9rem;
+}
+
+.detail-box {
+  background: rgba(16, 19, 28, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: left;
+  color: #f6f8ff;
+}
+
+.detail-box h3 {
+  font-size: 1rem;
+  margin-bottom: 0.4rem;
+  color: #ffc857;
+}
+
+.detail-box p {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.registration-listings-grid {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.registration-listing-card {
+  text-align: left;
+  background: linear-gradient(160deg, rgba(20, 24, 35, 0.95) 0%, rgba(10, 12, 18, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 1rem;
+  color: #f6f7fc;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.registration-listing-card h3 {
+  font-size: 1.1rem;
+}
+
+.registration-listing-card p {
+  line-height: 1.5;
+}
+
+.listing-price {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #8be9fd;
+}
+
+.listing-register-btn {
+  margin-top: auto;
+  display: inline-block;
+  padding: 0.6rem 0.9rem;
+  border-radius: 9px;
+  background: #ffc857;
+  color: #111;
+  font-weight: 700;
+  text-align: center;
+}
+
+.listing-register-btn:hover {
+  color: #111;
+  background: #ffbe33;
+}
+
 /* Rules indent */
 .event-details-desc .indent {
   padding-left: 1.25rem;
@@ -284,6 +397,15 @@ body {
   margin: 0;
 }
 
+.site-footer-links {
+  margin-bottom: 0.45rem;
+}
+
+.site-footer-operator {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+
 .site-footer a {
   color: #f4f6ff;
 }
@@ -293,6 +415,18 @@ body {
 }
 
 @media (max-width: 640px) {
+  .event-overview-card h1 {
+    font-size: 1.45rem;
+  }
+
+  .section-title {
+    font-size: 1.4rem;
+  }
+
+  .registration-listings-grid {
+    grid-template-columns: 1fr;
+  }
+
   .policy-card {
     padding: 1.1rem;
   }
