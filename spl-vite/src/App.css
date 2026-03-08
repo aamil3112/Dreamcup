@@ -225,3 +225,79 @@ body {
 .slider-next {
   cursor: pointer;
 }
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.policy-page {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 2.5rem 1rem;
+  background: linear-gradient(180deg, #060606 0%, #13151c 100%);
+}
+
+.policy-card {
+  width: 100%;
+  max-width: 920px;
+  background: rgba(16, 19, 28, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 1.5rem;
+  text-align: left;
+  color: #f5f7ff;
+  line-height: 1.65;
+}
+
+.policy-card h1 {
+  font-size: 2rem;
+  margin-bottom: 0.8rem;
+  color: #ffffff;
+}
+
+.policy-card h2 {
+  font-size: 1.2rem;
+  margin: 1.3rem 0 0.55rem;
+  color: #ffc857;
+}
+
+.policy-card p {
+  margin-bottom: 0.75rem;
+}
+
+.policy-card a {
+  color: #7fd1ff;
+}
+
+.site-footer {
+  margin-top: auto;
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  background: #090b10;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+.site-footer a {
+  color: #f4f6ff;
+}
+
+.site-footer a:hover {
+  color: #ffc857;
+}
+
+@media (max-width: 640px) {
+  .policy-card {
+    padding: 1.1rem;
+  }
+
+  .policy-card h1 {
+    font-size: 1.6rem;
+  }
+}
