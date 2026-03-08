@@ -3,9 +3,8 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.PROD
-  ? ''
-  : (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000');
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:4000');
 
 const SeniorRegistration = () => {
   const navigate = useNavigate();
@@ -125,25 +124,27 @@ const SeniorRegistration = () => {
       // Generate registration token format: DDMM00, DDMM01, DDMM02...
       const registrationToken = generateRegistrationToken();
       setPaymentStatusText('Preparing registration...');
-      const registrationData = await buildRegistrationPayload(registrationToken);
+      const registrationDataForCheckout = await buildRegistrationPayload(registrationToken, {
+        includeFiles: false,
+      });
 
       const checkoutPayload = {
         amount,
         customerName: formData.fullname,
         customerEmail: formData.email,
         customerPhone: normalizedPhone,
-        registrationData,
+        registrationData: registrationDataForCheckout,
         registrationToken,
       };
 
       // Create order on backend and get payment session (retry once for cold-start/network hiccups)
       let data;
       try {
-        const res = await axios.post(`${API_BASE_URL}/api/checkout`, checkoutPayload, { timeout: 15000 });
+        const res = await axios.post(`${API_BASE_URL}/api/checkout`, checkoutPayload, { timeout: 30000 });
         data = res.data;
       } catch (firstError) {
         await new Promise((resolve) => setTimeout(resolve, 1200));
-        const retryRes = await axios.post(`${API_BASE_URL}/api/checkout`, checkoutPayload, { timeout: 15000 });
+        const retryRes = await axios.post(`${API_BASE_URL}/api/checkout`, checkoutPayload, { timeout: 30000 });
         data = retryRes.data;
       }
 
@@ -172,7 +173,7 @@ const SeniorRegistration = () => {
       const verifyRes = await axios.post(`${API_BASE_URL}/api/paymentverification`, {
         orderId,
         registrationToken,
-      }, { timeout: 30000 });
+      }, { timeout: 45000 });
 
       if (!verifyRes.data?.success) {
         console.error('Payment verification failed:', verifyRes.data);
@@ -204,13 +205,20 @@ const SeniorRegistration = () => {
   };
 
   // Build registration payload to be saved by backend after payment verification
-  const buildRegistrationPayload = async (registrationToken) => {
+  const buildRegistrationPayload = async (registrationToken, options = {}) => {
+    const { includeFiles = true } = options;
+
     // Create an object to store form data
     const dataForSheets = {};
     
     // Process form data including file uploads
     for (const key in formData) {
       if (formData[key] instanceof File && formData[key]) {
+        if (!includeFiles) {
+          dataForSheets[`${key}Name`] = formData[key].name;
+          continue;
+        }
+
         // For file inputs, convert to base64
         try {
           const base64Data = await convertFileToBase64(formData[key]);
