@@ -28,6 +28,8 @@ const writePendingRegistrations = async (data) => {
   await fs.writeFile(PENDING_REGISTRATIONS_FILE, JSON.stringify(data, null, 2), "utf-8");
 };
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const upsertPendingRegistration = async (orderId, payload) => {
   const allPending = await readPendingRegistrations();
   allPending[orderId] = {
@@ -68,13 +70,26 @@ const forwardToGoogleSheets = async (payload = {}) => {
     }
   });
 
-  const { data } = await axios.post(GOOGLE_SCRIPT_URL, params.toString(), {
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-  });
+  let lastError = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const { data } = await axios.post(GOOGLE_SCRIPT_URL, params.toString(), {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        timeout: 15000,
+      });
 
-  return data;
+      return data;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 3) {
+        await sleep(400 * attempt);
+      }
+    }
+  }
+
+  throw lastError;
 };
 
 // Helper to get Cashfree API base URL based on environment
@@ -394,6 +409,179 @@ export const cashfreeWebhook = async (req, res) => {
       success: false,
       message: "Webhook processing failed",
       error: error?.response?.data || error.message,
+    });
+  }
+};
+
+const tryRecoverSingleOrder = async (orderId) => {
+  const pendingRegistration = await getPendingRegistration(orderId);
+
+  if (!pendingRegistration) {
+    return {
+      orderId,
+      success: false,
+      skipped: true,
+      reason: "ORDER_NOT_FOUND_IN_PENDING_STORE",
+    };
+  }
+
+  if (pendingRegistration.status === "REGISTERED") {
+    return {
+      orderId,
+      success: true,
+      skipped: true,
+      reason: "ALREADY_REGISTERED",
+      paymentId: pendingRegistration.paymentId || null,
+    };
+  }
+
+  if (!pendingRegistration.registrationData) {
+    return {
+      orderId,
+      success: false,
+      skipped: true,
+      reason: "MISSING_REGISTRATION_DATA",
+    };
+  }
+
+  const baseUrl = getCashfreeBaseUrl();
+  const url = `${baseUrl}/pg/orders/${orderId}`;
+  const headers = {
+    "x-client-id": process.env.CASHFREE_APP_ID,
+    "x-client-secret": process.env.CASHFREE_SECRET_KEY,
+    "x-api-version": "2023-08-01",
+  };
+
+  const { data } = await axios.get(url, { headers });
+
+  if (data.order_status !== "PAID") {
+    await upsertPendingRegistration(orderId, {
+      status: `RECOVERY_SKIPPED_${data.order_status}`,
+      lastRecoveryAt: new Date().toISOString(),
+    });
+
+    return {
+      orderId,
+      success: false,
+      skipped: true,
+      reason: `ORDER_NOT_PAID_${data.order_status}`,
+    };
+  }
+
+  const primaryPayment =
+    Array.isArray(data.payments) && data.payments.length > 0
+      ? data.payments[0]
+      : null;
+
+  const paymentId =
+    primaryPayment?.cf_payment_id ||
+    primaryPayment?.payment_id ||
+    orderId;
+
+  const payloadForSheets = {
+    ...pendingRegistration.registrationData,
+    paymentId,
+    paymentRefId: paymentId,
+    registrationToken:
+      pendingRegistration.registrationToken ||
+      pendingRegistration.registrationData.registrationToken,
+  };
+
+  await forwardToGoogleSheets(payloadForSheets);
+  await markRegistrationSaved(orderId, paymentId);
+
+  return {
+    orderId,
+    success: true,
+    skipped: false,
+    paymentId,
+  };
+};
+
+export const getPendingRecoveryOrders = async (req, res) => {
+  try {
+    const allPending = await readPendingRegistrations();
+    const entries = Object.values(allPending || {});
+    const actionable = entries.filter((entry) => entry?.status !== "REGISTERED");
+
+    return res.status(200).json({
+      success: true,
+      total: entries.length,
+      actionableCount: actionable.length,
+      actionable,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch pending recovery orders",
+      error: error?.message,
+    });
+  }
+};
+
+export const retryPendingOrder = async (req, res) => {
+  try {
+    const { orderId } = req.body || {};
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "orderId is required",
+      });
+    }
+
+    const result = await tryRecoverSingleOrder(orderId);
+    return res.status(200).json({
+      success: true,
+      result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retry order recovery",
+      error: error?.response?.data || error?.message,
+    });
+  }
+};
+
+export const retryAllPendingOrders = async (req, res) => {
+  try {
+    const allPending = await readPendingRegistrations();
+    const orderIds = Object.keys(allPending || {});
+    const targets = orderIds.filter((orderId) => allPending[orderId]?.status !== "REGISTERED");
+
+    const results = [];
+    for (const orderId of targets) {
+      try {
+        const result = await tryRecoverSingleOrder(orderId);
+        results.push(result);
+      } catch (error) {
+        results.push({
+          orderId,
+          success: false,
+          skipped: false,
+          reason: "RECOVERY_ERROR",
+          error: error?.response?.data || error?.message,
+        });
+      }
+    }
+
+    const recovered = results.filter((r) => r.success && !r.skipped).length;
+    const failed = results.filter((r) => !r.success && !r.skipped).length;
+    const skipped = results.filter((r) => r.skipped).length;
+
+    return res.status(200).json({
+      success: true,
+      attempted: targets.length,
+      recovered,
+      failed,
+      skipped,
+      results,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retry pending orders",
+      error: error?.message,
     });
   }
 };
