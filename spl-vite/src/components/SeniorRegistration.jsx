@@ -86,6 +86,50 @@ const SeniorRegistration = () => {
     });
   };
 
+  const isImageFile = (file) => Boolean(file?.type?.startsWith('image/'));
+
+  const compressImageFile = async (file) => {
+    if (!isImageFile(file)) {
+      return file;
+    }
+
+    const imageBitmap = await createImageBitmap(file);
+    const maxDimension = 1280;
+    const scale = Math.min(1, maxDimension / Math.max(imageBitmap.width, imageBitmap.height));
+    const targetWidth = Math.max(1, Math.round(imageBitmap.width * scale));
+    const targetHeight = Math.max(1, Math.round(imageBitmap.height * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+      return file;
+    }
+
+    context.drawImage(imageBitmap, 0, 0, targetWidth, targetHeight);
+
+    const preferredType = file.type === 'image/png' ? 'image/jpeg' : file.type;
+    const quality = 0.75;
+
+    const compressedBlob = await new Promise((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), preferredType, quality);
+    });
+
+    if (!compressedBlob || compressedBlob.size >= file.size) {
+      return file;
+    }
+
+    const extension = preferredType.includes('jpeg') ? 'jpg' : 'img';
+    const compressedName = file.name.replace(/\.[^.]+$/, `.${extension}`);
+
+    return new File([compressedBlob], compressedName, {
+      type: preferredType,
+      lastModified: Date.now(),
+    });
+  };
+
   const generateRegistrationToken = () => {
     const now = new Date();
     const day = String(now.getDate()).padStart(2, '0');
@@ -180,7 +224,7 @@ const SeniorRegistration = () => {
         orderId,
         registrationData: registrationDataForVerification,
         registrationToken,
-      }, { timeout: 45000 });
+      }, { timeout: 120000 });
 
       if (!verifyRes.data?.success) {
         console.error('Payment verification failed:', verifyRes.data);
@@ -228,7 +272,8 @@ const SeniorRegistration = () => {
 
         // For file inputs, convert to base64
         try {
-          const base64Data = await convertFileToBase64(formData[key]);
+          const fileForUpload = await compressImageFile(formData[key]);
+          const base64Data = await convertFileToBase64(fileForUpload);
           dataForSheets[key] = base64Data.split(',')[1]; // Remove the data:image/jpeg;base64, part
         } catch (error) {
           console.error(`Error converting ${key} to base64:`, error);
