@@ -170,9 +170,15 @@ const SeniorRegistration = () => {
 
       setPaymentStatusText('Checking payment status...');
 
+      // Build full payload now so verified payments include file data for Drive upload.
+      const registrationDataForVerification = await buildRegistrationPayload(registrationToken, {
+        includeFiles: true,
+      });
+
       // Verify payment and persist registration on backend using orderId
       const verifyRes = await axios.post(`${API_BASE_URL}/api/paymentverification`, {
         orderId,
+        registrationData: registrationDataForVerification,
         registrationToken,
       }, { timeout: 45000 });
 
