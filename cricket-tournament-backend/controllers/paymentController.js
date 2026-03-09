@@ -4,11 +4,13 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const GOOGLE_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbyxZRAYbTEqoDSbyMK8YODrE-kNN-4ggGf6D3kWgV8iRndJQQCcNg8LXbdEDs9byDa72Q/exec";
+  process.env.GOOGLE_SCRIPT_URL ||
+  "https://script.google.com/macros/s/AKfycbykZk0siaLiBfSbvBKovS9WI4Ca2_vic3m7ewr592IgSdSDDg8G6KGxhaBnYdA1BlartQ/exec";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PENDING_REGISTRATIONS_FILE = path.join(__dirname, "..", "data", "pending-registrations.json");
+const orderSaveLocks = new Map();
 
 const readPendingRegistrations = async () => {
   try {
@@ -60,6 +62,117 @@ const markRegistrationSaved = async (orderId, paymentId) => {
   };
 
   await writePendingRegistrations(allPending);
+};
+
+const withOrderSaveLock = async (orderId, task) => {
+  const existing = orderSaveLocks.get(orderId);
+  if (existing) {
+    return existing;
+  }
+
+  const current = (async () => {
+    try {
+      return await task();
+    } finally {
+      orderSaveLocks.delete(orderId);
+    }
+  })();
+
+  orderSaveLocks.set(orderId, current);
+  return current;
+};
+
+const hasBase64File = (value) => {
+  return typeof value === "string" && value.trim().length > 120;
+};
+
+const getMissingDocumentFields = (registrationData = {}) => {
+  const requiredFields = ["passportpic", "aadhaar"];
+  return requiredFields.filter((field) => !hasBase64File(registrationData[field]));
+};
+
+const TERMINAL_NON_PAID_STATUSES = new Set(["FAILED", "EXPIRED", "CANCELLED", "TERMINATED"]);
+
+const buildPendingSheetPayload = ({ orderId, registrationData = {}, registrationToken, amount }) => {
+  return {
+    ...registrationData,
+    orderId,
+    registrationToken: registrationToken || registrationData.registrationToken || null,
+    paymentStatus: "PENDING",
+    paymentId: "",
+    paymentRefId: "",
+    amount,
+    operation: "upsert_by_order_id",
+    rowAction: "PENDING_CREATE",
+    createdAt: new Date().toISOString(),
+  };
+};
+
+const buildSuccessSheetPayload = ({ orderId, paymentId, registrationToken }) => {
+  return {
+    orderId,
+    paymentStatus: "SUCCESS",
+    paymentId,
+    paymentRefId: paymentId,
+    registrationToken,
+    operation: "upsert_by_order_id",
+    rowAction: "PAYMENT_SUCCESS",
+    paidAt: new Date().toISOString(),
+  };
+};
+
+const deletePendingSheetRow = async ({ orderId, reason }) => {
+  await forwardToGoogleSheets({
+    orderId,
+    operation: "delete_by_order_id",
+    rowAction: "DELETE_PENDING",
+    paymentStatus: "DELETED",
+    deleteReason: reason || "UNSPECIFIED",
+    updatedAt: new Date().toISOString(),
+  });
+};
+
+const saveRegistrationOnce = async ({ orderId, paymentId, registrationData, registrationToken }) => {
+  return withOrderSaveLock(orderId, async () => {
+    const latestPending = await getPendingRegistration(orderId);
+    if (latestPending?.status === "REGISTERED") {
+      return {
+        alreadySaved: true,
+        paymentId: latestPending.paymentId || paymentId,
+      };
+    }
+
+    const missingDocumentFields = getMissingDocumentFields(registrationData);
+    if (missingDocumentFields.length > 0) {
+      await upsertPendingRegistration(orderId, {
+        orderId,
+        paymentId,
+        status: "PAID_MISSING_DOCUMENT_FILES",
+        missingDocumentFields,
+        paidAt: new Date().toISOString(),
+      });
+
+      return {
+        alreadySaved: false,
+        missingDocumentFields,
+        paymentId,
+      };
+    }
+
+    await forwardToGoogleSheets(
+      buildSuccessSheetPayload({
+        orderId,
+        paymentId,
+        registrationToken,
+      })
+    );
+    await markRegistrationSaved(orderId, paymentId);
+
+    return {
+      alreadySaved: false,
+      paymentId,
+    };
+  });
 };
 
 const forwardToGoogleSheets = async (payload = {}) => {
@@ -168,6 +281,17 @@ export const checkout = async (req, res) => {
     "Content-Type": "application/json",
   };
 
+  if (registrationData && typeof registrationData === "object") {
+    const missingDocumentFields = getMissingDocumentFields(registrationData);
+    if (missingDocumentFields.length > 0) {
+      return res.status(422).json({
+        success: false,
+        message: "Please upload passport photo and Aadhaar before payment.",
+        missingDocumentFields,
+      });
+    }
+  }
+
   try {
     const { data } = await axios.post(url, payload, { headers });
 
@@ -183,6 +307,28 @@ export const checkout = async (req, res) => {
         status: "ORDER_CREATED",
         createdAt: new Date().toISOString(),
       });
+
+      try {
+        await forwardToGoogleSheets(
+          buildPendingSheetPayload({
+            orderId: data.order_id,
+            registrationData,
+            registrationToken,
+            amount: orderAmount,
+          })
+        );
+
+        await upsertPendingRegistration(data.order_id, {
+          status: "PENDING_SHEETS_SAVED",
+          pendingSavedAt: new Date().toISOString(),
+        });
+      } catch (sheetError) {
+        console.error("Error saving pending registration before payment:", sheetError?.response?.data || sheetError.message);
+        return res.status(503).json({
+          success: false,
+          message: "Could not save registration details. Please try again.",
+        });
+      }
     }
 
     return res.status(200).json({
@@ -239,7 +385,10 @@ export const paymentVerification = async (req, res) => {
       const pendingRegistration = await getPendingRegistration(orderId);
       const finalRegistrationData =
         registrationData && typeof registrationData === "object"
-          ? registrationData
+          ? {
+              ...(pendingRegistration?.registrationData || {}),
+              ...registrationData,
+            }
           : pendingRegistration?.registrationData;
 
       const finalRegistrationToken =
@@ -248,16 +397,41 @@ export const paymentVerification = async (req, res) => {
         pendingRegistration?.registrationToken;
 
       if (finalRegistrationData && typeof finalRegistrationData === "object") {
-        const payloadForSheets = {
-          ...finalRegistrationData,
-          paymentId,
-          paymentRefId: paymentId,
+        await upsertPendingRegistration(orderId, {
+          orderId,
           registrationToken: finalRegistrationToken,
-        };
+          registrationData: finalRegistrationData,
+          status: "PAID_VERIFIED",
+          paymentId,
+          paidAt: new Date().toISOString(),
+        });
+      }
 
+      if (finalRegistrationData && typeof finalRegistrationData === "object") {
         try {
-          await forwardToGoogleSheets(payloadForSheets);
-          await markRegistrationSaved(orderId, paymentId);
+          const saveResult = await saveRegistrationOnce({
+            orderId,
+            paymentId,
+            registrationData: finalRegistrationData,
+            registrationToken: finalRegistrationToken,
+          });
+
+          if (saveResult.missingDocumentFields?.length) {
+            return res.status(422).json({
+              success: false,
+              message: "Payment successful, but required document files are missing. Please re-upload documents.",
+              paymentId: saveResult.paymentId,
+              missingDocumentFields: saveResult.missingDocumentFields,
+            });
+          }
+
+          if (saveResult.alreadySaved) {
+            return res.status(200).json({
+              success: true,
+              message: "Payment already verified and registration already saved",
+              paymentId: saveResult.paymentId,
+            });
+          }
         } catch (sheetError) {
           console.error("Error saving registration after payment:", sheetError?.response?.data || sheetError.message);
           return res.status(500).json({
@@ -280,6 +454,26 @@ export const paymentVerification = async (req, res) => {
         message: "Payment verified successfully",
         paymentId,
       });
+    }
+
+    if (TERMINAL_NON_PAID_STATUSES.has(data.order_status)) {
+      const existing = await getPendingRegistration(orderId);
+      if (existing?.status !== "REGISTERED") {
+        try {
+          await deletePendingSheetRow({
+            orderId,
+            reason: `PAYMENT_${data.order_status}`,
+          });
+        } catch (sheetDeleteError) {
+          console.error("Error deleting pending sheet row:", sheetDeleteError?.response?.data || sheetDeleteError.message);
+        }
+
+        await upsertPendingRegistration(orderId, {
+          orderId,
+          status: `PAYMENT_${data.order_status}_PENDING_DELETED`,
+          failedAt: new Date().toISOString(),
+        });
+      }
     }
 
     return res.status(400).json({
@@ -343,6 +537,17 @@ export const cashfreeWebhook = async (req, res) => {
     const { data } = await axios.get(url, { headers });
 
     if (data.order_status !== "PAID") {
+      if (TERMINAL_NON_PAID_STATUSES.has(data.order_status)) {
+        try {
+          await deletePendingSheetRow({
+            orderId: extractedOrderId,
+            reason: `WEBHOOK_${data.order_status}`,
+          });
+        } catch (sheetDeleteError) {
+          console.error("Error deleting pending sheet row via webhook:", sheetDeleteError?.response?.data || sheetDeleteError.message);
+        }
+      }
+
       await upsertPendingRegistration(extractedOrderId, {
         orderId: extractedOrderId,
         status: `WEBHOOK_RECEIVED_${data.order_status}`,
@@ -386,17 +591,31 @@ export const cashfreeWebhook = async (req, res) => {
       });
     }
 
-    const payloadForSheets = {
-      ...pendingRegistration.registrationData,
+    const saveResult = await saveRegistrationOnce({
+      orderId: extractedOrderId,
       paymentId,
-      paymentRefId: paymentId,
+      registrationData: pendingRegistration.registrationData,
       registrationToken:
         pendingRegistration.registrationToken ||
         pendingRegistration.registrationData.registrationToken,
-    };
+    });
 
-    await forwardToGoogleSheets(payloadForSheets);
-    await markRegistrationSaved(extractedOrderId, paymentId);
+    if (saveResult.missingDocumentFields?.length) {
+      return res.status(200).json({
+        success: true,
+        message: "Payment is successful but document files are missing for this order.",
+        paymentId: saveResult.paymentId,
+        missingDocumentFields: saveResult.missingDocumentFields,
+      });
+    }
+
+    if (saveResult.alreadySaved) {
+      return res.status(200).json({
+        success: true,
+        message: "Registration already saved for this order.",
+        paymentId: saveResult.paymentId,
+      });
+    }
 
     return res.status(200).json({
       success: true,
@@ -455,6 +674,17 @@ const tryRecoverSingleOrder = async (orderId) => {
   const { data } = await axios.get(url, { headers });
 
   if (data.order_status !== "PAID") {
+    if (TERMINAL_NON_PAID_STATUSES.has(data.order_status)) {
+      try {
+        await deletePendingSheetRow({
+          orderId,
+          reason: `RECOVERY_${data.order_status}`,
+        });
+      } catch (sheetDeleteError) {
+        console.error("Error deleting pending sheet row via recovery:", sheetDeleteError?.response?.data || sheetDeleteError.message);
+      }
+    }
+
     await upsertPendingRegistration(orderId, {
       status: `RECOVERY_SKIPPED_${data.order_status}`,
       lastRecoveryAt: new Date().toISOString(),
@@ -478,17 +708,26 @@ const tryRecoverSingleOrder = async (orderId) => {
     primaryPayment?.payment_id ||
     orderId;
 
-  const payloadForSheets = {
-    ...pendingRegistration.registrationData,
+  await saveRegistrationOnce({
+    orderId,
     paymentId,
-    paymentRefId: paymentId,
+    registrationData: pendingRegistration.registrationData,
     registrationToken:
       pendingRegistration.registrationToken ||
       pendingRegistration.registrationData.registrationToken,
-  };
+  });
 
-  await forwardToGoogleSheets(payloadForSheets);
-  await markRegistrationSaved(orderId, paymentId);
+  const latestPending = await getPendingRegistration(orderId);
+  if (latestPending?.status === "PAID_MISSING_DOCUMENT_FILES") {
+    return {
+      orderId,
+      success: false,
+      skipped: true,
+      reason: "MISSING_DOCUMENT_FILES",
+      paymentId,
+      missingDocumentFields: latestPending.missingDocumentFields || ["passportpic", "aadhaar"],
+    };
+  }
 
   return {
     orderId,

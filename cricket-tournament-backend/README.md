@@ -16,7 +16,12 @@ Users sometimes close the tab on Cashfree success and do not wait for frontend v
 - `POST /api/paymentverification`
   - Verifies order with Cashfree.
   - Uses request registration data if present, otherwise falls back to stored pending registration.
-  - Saves to Google Sheets and marks order as `REGISTERED`.
+  - Marks pending row as paid in Google Sheets and marks order as `REGISTERED`.
+
+- Google Sheets sync lifecycle
+  - Checkout sends `operation=upsert_by_order_id` and `paymentStatus=PENDING` with full form data.
+  - Successful payment sends `operation=upsert_by_order_id` and `paymentStatus=SUCCESS`.
+  - Terminal non-paid statuses send `operation=delete_by_order_id` to remove pending rows.
 
 - `POST /api/cashfree/webhook`
   - Intended for Cashfree webhook callback.
@@ -29,6 +34,9 @@ Users sometimes close the tab on Cashfree success and do not wait for frontend v
    - `https://<your-backend-domain>/api/cashfree/webhook`
 2. Keep backend disk persistent, or replace file storage with DB for long-term scale.
 3. Monitor `data/pending-registrations.json` for `PAID_MISSING_REGISTRATION_DATA` records.
+4. Ensure Google Apps Script supports these operations by `orderId`:
+  - `upsert_by_order_id`
+  - `delete_by_order_id`
 
 ### Note
 
