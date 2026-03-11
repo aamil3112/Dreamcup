@@ -7,6 +7,9 @@ const API_BASE_URL = import.meta.env.PROD
   ? ''
   : (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000');
 
+const PENDING_ORDER_ID_KEY = 'dangercupPendingOrderId';
+const PENDING_REGISTRATION_TOKEN_KEY = 'dangercupPendingRegistrationToken';
+
 const SeniorRegistration = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -26,6 +29,37 @@ const SeniorRegistration = () => {
   const [isCashfreeReady, setIsCashfreeReady] = useState(false);
   const [paymentStatusText, setPaymentStatusText] = useState('');
   const amount = 360; // Gross amount for ₹350+tax pricing
+
+  const verifyReturnedOrder = async (orderId, registrationTokenHint = '') => {
+    try {
+      const verifyRes = await axios.post(`${API_BASE_URL}/api/paymentverification`, {
+        orderId,
+        registrationToken: registrationTokenHint || undefined,
+      }, { timeout: 120000 });
+
+      if (!verifyRes.data?.success) {
+        alert(verifyRes.data?.message || 'Payment verification failed. Please contact support.');
+        return;
+      }
+
+      const paymentId = verifyRes.data.paymentId;
+      localStorage.removeItem(PENDING_ORDER_ID_KEY);
+      localStorage.removeItem(PENDING_REGISTRATION_TOKEN_KEY);
+      navigate('/', {
+        state: {
+          paymentSuccess: true,
+          paymentId,
+          registrationToken: registrationTokenHint || undefined,
+        },
+      });
+    } catch (error) {
+      console.error('Error verifying returned order:', error);
+      alert('We could not verify your payment yet. Please wait a minute and try again.');
+    } finally {
+      setIsSubmitting(false);
+      setPaymentStatusText('');
+    }
+  };
 
   useEffect(() => {
     // Add the CSS link to the head
@@ -53,6 +87,22 @@ const SeniorRegistration = () => {
       }
       setIsCashfreeReady(false);
     };
+  }, []);
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const orderFromQuery = query.get('order_id') || query.get('orderId') || query.get('cf_order_id');
+    const orderFromStorage = localStorage.getItem(PENDING_ORDER_ID_KEY);
+    const registrationTokenHint = localStorage.getItem(PENDING_REGISTRATION_TOKEN_KEY) || '';
+
+    const orderToVerify = orderFromQuery || orderFromStorage;
+    if (!orderToVerify) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setPaymentStatusText('Verifying your recent payment...');
+    verifyReturnedOrder(orderToVerify, registrationTokenHint);
   }, []);
 
   const handleChange = (e) => {
@@ -187,7 +237,7 @@ const SeniorRegistration = () => {
       try {
         const res = await axios.post(`${API_BASE_URL}/api/checkout`, checkoutPayload, { timeout: 30000 });
         data = res.data;
-      } catch (firstError) {
+      } catch {
         await new Promise((resolve) => setTimeout(resolve, 1200));
         const retryRes = await axios.post(`${API_BASE_URL}/api/checkout`, checkoutPayload, { timeout: 30000 });
         data = retryRes.data;
@@ -198,6 +248,8 @@ const SeniorRegistration = () => {
       }
 
       const { paymentSessionId, orderId } = data;
+      localStorage.setItem(PENDING_ORDER_ID_KEY, orderId);
+      localStorage.setItem(PENDING_REGISTRATION_TOKEN_KEY, registrationToken);
 
       setPaymentStatusText('Opening payment gateway...');
       const result = await cashfree.checkout({
@@ -214,9 +266,15 @@ const SeniorRegistration = () => {
 
       setPaymentStatusText('Checking payment status...');
 
+      // Send full payload as fallback in case pending-row insert did not happen.
+      const registrationDataForVerification = await buildRegistrationPayload(registrationToken, {
+        includeFiles: true,
+      });
+
       // Verify payment and persist registration on backend using orderId
       const verifyRes = await axios.post(`${API_BASE_URL}/api/paymentverification`, {
         orderId,
+        registrationData: registrationDataForVerification,
         registrationToken,
       }, { timeout: 120000 });
 
@@ -227,6 +285,8 @@ const SeniorRegistration = () => {
       }
 
       const paymentId = verifyRes.data.paymentId;
+      localStorage.removeItem(PENDING_ORDER_ID_KEY);
+      localStorage.removeItem(PENDING_REGISTRATION_TOKEN_KEY);
 
       setPaymentStatusText('Saving registration...');
 
@@ -271,6 +331,7 @@ const SeniorRegistration = () => {
           dataForSheets[key] = base64Data.split(',')[1]; // Remove the data:image/jpeg;base64, part
         } catch (error) {
           console.error(`Error converting ${key} to base64:`, error);
+          throw new Error(`Unable to process ${key}. Please re-upload and try again.`);
         }
       } else {
         // For regular inputs

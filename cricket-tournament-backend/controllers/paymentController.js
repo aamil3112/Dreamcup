@@ -108,8 +108,16 @@ const buildPendingSheetPayload = ({ orderId, registrationData = {}, registration
   };
 };
 
-const buildSuccessSheetPayload = ({ orderId, paymentId, registrationToken }) => {
+const buildSuccessSheetPayload = ({ orderId, paymentId, registrationToken, registrationData = {} }) => {
   return {
+    fullname: registrationData.fullname || "",
+    mobilenumber: registrationData.mobilenumber || "",
+    dob: registrationData.dob || "",
+    email: registrationData.email || "",
+    role: registrationData.role || "",
+    batting: registrationData.batting || "",
+    bowling: registrationData.bowling || "",
+    battingOrder: registrationData.battingOrder || "",
     orderId,
     paymentStatus: "SUCCESS",
     paymentId,
@@ -164,6 +172,7 @@ const saveRegistrationOnce = async ({ orderId, paymentId, registrationData, regi
         orderId,
         paymentId,
         registrationToken,
+        registrationData,
       })
     );
     await markRegistrationSaved(orderId, paymentId);
@@ -213,6 +222,10 @@ const getCashfreeBaseUrl = () => {
     : "https://sandbox.cashfree.com";
 };
 
+const getAppBaseUrl = () => {
+  return (process.env.APP_BASE_URL || "https://dangercup.online").replace(/\/$/, "");
+};
+
 // POST /api/checkout
 // Creates a Cashfree order and returns payment session details to the frontend
 export const checkout = async (req, res) => {
@@ -256,6 +269,9 @@ export const checkout = async (req, res) => {
     order_id: orderId,
     order_amount: orderAmount,
     order_currency: "INR",
+    order_meta: {
+      return_url: `${getAppBaseUrl()}/registration?order_id=${orderId}`,
+    },
     customer_details: {
       customer_id: safeCustomerId,
       customer_name: customerName || "Guest",
@@ -280,17 +296,6 @@ export const checkout = async (req, res) => {
     "x-api-version": "2023-08-01",
     "Content-Type": "application/json",
   };
-
-  if (registrationData && typeof registrationData === "object") {
-    const missingDocumentFields = getMissingDocumentFields(registrationData);
-    if (missingDocumentFields.length > 0) {
-      return res.status(422).json({
-        success: false,
-        message: "Please upload passport photo and Aadhaar before payment.",
-        missingDocumentFields,
-      });
-    }
-  }
 
   try {
     const response = await axios.post(url, payload, { headers });
