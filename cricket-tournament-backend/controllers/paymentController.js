@@ -293,7 +293,22 @@ export const checkout = async (req, res) => {
   }
 
   try {
-    const { data } = await axios.post(url, payload, { headers });
+    const response = await axios.post(url, payload, { headers });
+    const data = response.data;
+
+    // Validate response is valid JSON/object
+    if (!data || typeof data !== "object" || !data.order_id) {
+      console.error("Invalid Cashfree response format:", {
+        status: response.status,
+        contentType: response.headers["content-type"],
+        dataType: typeof data,
+        preview: typeof data === "string" ? data.substring(0, 500) : JSON.stringify(data).substring(0, 500),
+      });
+      return res.status(502).json({
+        success: false,
+        message: "Invalid response from Cashfree API",
+      });
+    }
 
     if (registrationData && typeof registrationData === "object") {
       await upsertPendingRegistration(data.order_id, {
@@ -337,11 +352,18 @@ export const checkout = async (req, res) => {
       paymentSessionId: data.payment_session_id,
     });
   } catch (error) {
-    console.error("Error creating Cashfree order:", error?.response?.data || error.message);
+    console.error("Error creating Cashfree order:", {
+      message: error.message,
+      status: error?.response?.status,
+      contentType: error?.response?.headers?.["content-type"],
+      dataPreview: typeof error?.response?.data === "string" 
+        ? error.response.data.substring(0, 500)
+        : JSON.stringify(error?.response?.data || {}).substring(0, 500),
+    });
     return res.status(500).json({
       success: false,
       message: "Failed to create Cashfree order",
-      error: error?.response?.data || error.message,
+      error: error?.response?.status ? `HTTP ${error.response.status}` : error.message,
     });
   }
 };
@@ -368,7 +390,22 @@ export const paymentVerification = async (req, res) => {
   };
 
   try {
-    const { data } = await axios.get(url, { headers });
+    const response = await axios.get(url, { headers });
+    const data = response.data;
+
+    // Validate response is valid JSON/object
+    if (!data || typeof data !== "object" || !data.order_id) {
+      console.error("Invalid Cashfree verification response:", {
+        status: response.status,
+        contentType: response.headers["content-type"],
+        dataType: typeof data,
+        preview: typeof data === "string" ? data.substring(0, 500) : JSON.stringify(data).substring(0, 500),
+      });
+      return res.status(502).json({
+        success: false,
+        message: "Invalid response from Cashfree API",
+      });
+    }
 
     // An order is successful when order_status is PAID
     if (data.order_status === "PAID") {
@@ -482,11 +519,18 @@ export const paymentVerification = async (req, res) => {
       orderStatus: data.order_status,
     });
   } catch (error) {
-    console.error("Error verifying Cashfree order:", error?.response?.data || error.message);
+    console.error("Error verifying Cashfree order:", {
+      message: error.message,
+      status: error?.response?.status,
+      contentType: error?.response?.headers?.["content-type"],
+      dataPreview: typeof error?.response?.data === "string"
+        ? error.response.data.substring(0, 500)
+        : JSON.stringify(error?.response?.data || {}).substring(0, 500),
+    });
     return res.status(500).json({
       success: false,
       message: "Failed to verify payment with Cashfree",
-      error: error?.response?.data || error.message,
+      error: error?.response?.status ? `HTTP ${error.response.status}` : error.message,
     });
   }
 };
@@ -534,7 +578,23 @@ export const cashfreeWebhook = async (req, res) => {
       "x-api-version": "2023-08-01",
     };
 
-    const { data } = await axios.get(url, { headers });
+    const { data: responseData } = await axios.get(url, { headers });
+    
+    // Validate response is valid JSON/object
+    if (!responseData || typeof responseData !== "object" || !responseData.order_id) {
+      console.error("Invalid Cashfree webhook response:", {
+        status: responseData?.status,
+        contentType: responseData?.headers?.["content-type"],
+        dataType: typeof responseData,
+        preview: typeof responseData === "string" ? responseData.substring(0, 500) : JSON.stringify(responseData).substring(0, 500),
+      });
+      return res.status(200).json({
+        success: true,
+        message: "Webhook acknowledged but invalid response from Cashfree API.",
+      });
+    }
+
+    const data = responseData;
 
     if (data.order_status !== "PAID") {
       if (TERMINAL_NON_PAID_STATUSES.has(data.order_status)) {
@@ -623,11 +683,18 @@ export const cashfreeWebhook = async (req, res) => {
       paymentId,
     });
   } catch (error) {
-    console.error("Error processing Cashfree webhook:", error?.response?.data || error.message);
+    console.error("Error processing Cashfree webhook:", {
+      message: error.message,
+      status: error?.response?.status,
+      contentType: error?.response?.headers?.["content-type"],
+      dataPreview: typeof error?.response?.data === "string"
+        ? error.response.data.substring(0, 500)
+        : JSON.stringify(error?.response?.data || {}).substring(0, 500),
+    });
     return res.status(500).json({
       success: false,
       message: "Webhook processing failed",
-      error: error?.response?.data || error.message,
+      error: error?.response?.status ? `HTTP ${error.response.status}` : error.message,
     });
   }
 };
@@ -672,6 +739,21 @@ const tryRecoverSingleOrder = async (orderId) => {
   };
 
   const { data } = await axios.get(url, { headers });
+
+  // Validate response is valid JSON/object
+  if (!data || typeof data !== "object" || !data.order_id) {
+    console.error("Invalid Cashfree recovery response:", {
+      orderId,
+      dataType: typeof data,
+      preview: typeof data === "string" ? data.substring(0, 500) : JSON.stringify(data).substring(0, 500),
+    });
+    return {
+      orderId,
+      success: false,
+      skipped: true,
+      reason: "INVALID_CASHFREE_RESPONSE",
+    };
+  }
 
   if (data.order_status !== "PAID") {
     if (TERMINAL_NON_PAID_STATUSES.has(data.order_status)) {
