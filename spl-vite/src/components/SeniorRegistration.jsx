@@ -54,7 +54,13 @@ const SeniorRegistration = () => {
       });
     } catch (error) {
       console.error('Error verifying returned order:', error);
-      alert('We could not verify your payment yet. Please wait a minute and try again.');
+      if (error.response && error.response.status === 400) {
+        // Abandoned or unpaid order. Clear it from storage so it does not loop on every refresh.
+        localStorage.removeItem(PENDING_ORDER_ID_KEY);
+        localStorage.removeItem(PENDING_REGISTRATION_TOKEN_KEY);
+      } else {
+        alert('We could not verify your payment yet. Please wait a minute and try again.');
+      }
     } finally {
       setIsSubmitting(false);
       setPaymentStatusText('');

@@ -328,27 +328,24 @@ export const checkout = async (req, res) => {
         createdAt: new Date().toISOString(),
       });
 
-      try {
-        await forwardToGoogleSheets(
-          buildPendingSheetPayload({
-            orderId: data.order_id,
-            registrationData,
-            registrationToken,
-            amount: orderAmount,
-          })
-        );
-
-        await upsertPendingRegistration(data.order_id, {
-          status: "PENDING_SHEETS_SAVED",
-          pendingSavedAt: new Date().toISOString(),
+      // Fire and forget sheets update to avoid blocking Cashfree checkout (prevents 499 timeouts)
+      forwardToGoogleSheets(
+        buildPendingSheetPayload({
+          orderId: data.order_id,
+          registrationData,
+          registrationToken,
+          amount: orderAmount,
+        })
+      )
+        .then(() => {
+          return upsertPendingRegistration(data.order_id, {
+            status: "PENDING_SHEETS_SAVED",
+            pendingSavedAt: new Date().toISOString(),
+          });
+        })
+        .catch((sheetError) => {
+          console.error("Async error saving pending registration before payment:", sheetError?.response?.data || sheetError.message);
         });
-      } catch (sheetError) {
-        console.error("Error saving pending registration before payment:", sheetError?.response?.data || sheetError.message);
-        return res.status(503).json({
-          success: false,
-          message: "Could not save registration details. Please try again.",
-        });
-      }
     }
 
     return res.status(200).json({
