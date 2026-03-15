@@ -55,9 +55,16 @@ const SeniorRegistration = () => {
     } catch (error) {
       console.error('Error verifying returned order:', error);
       if (error.response && error.response.status === 400) {
-        // Abandoned or unpaid order. Clear it from storage so it does not loop on every refresh.
-        localStorage.removeItem(PENDING_ORDER_ID_KEY);
-        localStorage.removeItem(PENDING_REGISTRATION_TOKEN_KEY);
+        const orderStatus = error.response.data?.orderStatus;
+        if (orderStatus === 'ACTIVE') {
+          // Payment is still processing – keep the order in localStorage so
+          // it auto-retries on page refresh. Don't scare the user.
+          alert('Your payment is still being processed. Please wait a moment and refresh the page.');
+        } else {
+          // Terminal failure (FAILED, EXPIRED, CANCELLED, etc.) – clear storage
+          localStorage.removeItem(PENDING_ORDER_ID_KEY);
+          localStorage.removeItem(PENDING_REGISTRATION_TOKEN_KEY);
+        }
       } else {
         alert('We could not verify your payment yet. Please wait a minute and try again.');
       }

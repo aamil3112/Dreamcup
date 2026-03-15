@@ -393,15 +393,15 @@ export const paymentVerification = async (req, res) => {
 
   try {
     const response = await axios.get(url, { headers });
-    const data = response.data;
+    let orderData = response.data;
 
     // Validate response is valid JSON/object
-    if (!data || typeof data !== "object" || !data.order_id) {
+    if (!orderData || typeof orderData !== "object" || !orderData.order_id) {
       console.error("Invalid Cashfree verification response:", {
         status: response.status,
         contentType: response.headers["content-type"],
-        dataType: typeof data,
-        preview: typeof data === "string" ? data.substring(0, 500) : JSON.stringify(data).substring(0, 500),
+        dataType: typeof orderData,
+        preview: typeof orderData === "string" ? orderData.substring(0, 500) : JSON.stringify(orderData).substring(0, 500),
       });
       return res.status(502).json({
         success: false,
@@ -409,11 +409,31 @@ export const paymentVerification = async (req, res) => {
       });
     }
 
+    // If the order is still ACTIVE (payment processing), retry a few times
+    // to give Cashfree time to settle the payment status.
+    if (orderData.order_status === "ACTIVE") {
+      const MAX_RETRIES = 3;
+      const RETRY_DELAY_MS = 1000;
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        console.log(`Payment verification retry ${attempt}/${MAX_RETRIES} for order ${orderId} (status: ACTIVE)`);
+        await sleep(RETRY_DELAY_MS);
+        try {
+          const retryResponse = await axios.get(url, { headers });
+          if (retryResponse.data && typeof retryResponse.data === "object" && retryResponse.data.order_id) {
+            orderData = retryResponse.data;
+          }
+        } catch (retryError) {
+          console.error(`Retry ${attempt} failed for order ${orderId}:`, retryError.message);
+        }
+        if (orderData.order_status !== "ACTIVE") break;
+      }
+    }
+
     // An order is successful when order_status is PAID
-    if (data.order_status === "PAID") {
+    if (orderData.order_status === "PAID") {
       const primaryPayment =
-        Array.isArray(data.payments) && data.payments.length > 0
-          ? data.payments[0]
+        Array.isArray(orderData.payments) && orderData.payments.length > 0
+          ? orderData.payments[0]
           : null;
 
       const paymentId =
@@ -495,13 +515,13 @@ export const paymentVerification = async (req, res) => {
       });
     }
 
-    if (TERMINAL_NON_PAID_STATUSES.has(data.order_status)) {
+    if (TERMINAL_NON_PAID_STATUSES.has(orderData.order_status)) {
       const existing = await getPendingRegistration(orderId);
       if (existing?.status !== "REGISTERED") {
         try {
           await deletePendingSheetRow({
             orderId,
-            reason: `PAYMENT_${data.order_status}`,
+            reason: `PAYMENT_${orderData.order_status}`,
           });
         } catch (sheetDeleteError) {
           console.error("Error deleting pending sheet row:", sheetDeleteError?.response?.data || sheetDeleteError.message);
@@ -509,7 +529,7 @@ export const paymentVerification = async (req, res) => {
 
         await upsertPendingRegistration(orderId, {
           orderId,
-          status: `PAYMENT_${data.order_status}_PENDING_DELETED`,
+          status: `PAYMENT_${orderData.order_status}_PENDING_DELETED`,
           failedAt: new Date().toISOString(),
         });
       }
@@ -517,8 +537,8 @@ export const paymentVerification = async (req, res) => {
 
     return res.status(400).json({
       success: false,
-      message: `Payment not successful. Current status: ${data.order_status}`,
-      orderStatus: data.order_status,
+      message: `Payment not successful. Current status: ${orderData.order_status}`,
+      orderStatus: orderData.order_status,
     });
   } catch (error) {
     console.error("Error verifying Cashfree order:", {
