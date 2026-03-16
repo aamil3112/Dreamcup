@@ -193,7 +193,7 @@ const forwardToGoogleSheets = async (payload = {}) => {
   });
 
   let lastError = null;
-  const timeoutLimit = 10000; // Reduced from 15s to 10s
+  const timeoutLimit = 30000; // Increased from 10s to 30s to handle slow Sheets execution
 
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
@@ -347,7 +347,7 @@ export const checkout = async (req, res) => {
           });
         })
         .catch((sheetError) => {
-          console.error("Async error saving pending registration before payment:", sheetError?.response?.data || sheetError.message);
+          console.error(`Async error saving pending registration for ${data.order_id} before payment:`, sheetError?.response?.data || sheetError.message);
         });
     }
 
@@ -415,8 +415,8 @@ export const paymentVerification = async (req, res) => {
     // If the order is still ACTIVE (payment processing), retry a few times
     // to give Cashfree time to settle the payment status.
     if (orderData.order_status === "ACTIVE") {
-      const MAX_RETRIES = 3;
-      const RETRY_DELAY_MS = 1000;
+      const MAX_RETRIES = 5; // Increased from 3
+      const RETRY_DELAY_MS = 2000; // Increased from 1000
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         console.log(`Payment verification retry ${attempt}/${MAX_RETRIES} for order ${orderId} (status: ACTIVE)`);
         await sleep(RETRY_DELAY_MS);
