@@ -193,18 +193,21 @@ const forwardToGoogleSheets = async (payload = {}) => {
   });
 
   let lastError = null;
+  const timeoutLimit = 10000; // Reduced from 15s to 10s
+
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
       const { data } = await axios.post(GOOGLE_SCRIPT_URL, params.toString(), {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        timeout: 15000,
+        timeout: timeoutLimit,
       });
 
       return data;
     } catch (error) {
       lastError = error;
+      // If it's a timeout or server error, retry.
       if (attempt < 3) {
         await sleep(400 * attempt);
       }
@@ -492,12 +495,8 @@ export const paymentVerification = async (req, res) => {
             });
           }
         } catch (sheetError) {
-          console.error("Error saving registration after payment:", sheetError?.response?.data || sheetError.message);
-          return res.status(500).json({
-            success: false,
-            message: "Payment successful, but registration save failed. Please contact support.",
-            paymentId,
-          });
+          console.error("Error saving registration after payment (moving to background):", sheetError?.response?.data || sheetError.message);
+          // Don't fail the verification if Sheets update fails; it will be recovered later or handled in background
         }
       } else {
         await upsertPendingRegistration(orderId, {
@@ -893,19 +892,27 @@ export const retryAllPendingOrders = async (req, res) => {
     const targets = orderIds.filter((orderId) => allPending[orderId]?.status !== "REGISTERED");
 
     const results = [];
-    for (const orderId of targets) {
-      try {
-        const result = await tryRecoverSingleOrder(orderId);
-        results.push(result);
-      } catch (error) {
-        results.push({
-          orderId,
-          success: false,
-          skipped: false,
-          reason: "RECOVERY_ERROR",
-          error: error?.response?.data || error?.message,
-        });
-      }
+    const CONCURRENCY_LIMIT = 5;
+    
+    // Process in chunks to avoid overwhelming the external APIs and hitting timeouts
+    for (let i = 0; i < targets.length; i += CONCURRENCY_LIMIT) {
+      const chunk = targets.slice(i, i + CONCURRENCY_LIMIT);
+      const chunkPromises = chunk.map(async (orderId) => {
+        try {
+          return await tryRecoverSingleOrder(orderId);
+        } catch (error) {
+          return {
+            orderId,
+            success: false,
+            skipped: false,
+            reason: "RECOVERY_ERROR",
+            error: error?.response?.data || error?.message,
+          };
+        }
+      });
+      
+      const chunkResults = await Promise.all(chunkPromises);
+      results.push(...chunkResults);
     }
 
     const recovered = results.filter((r) => r.success && !r.skipped).length;
