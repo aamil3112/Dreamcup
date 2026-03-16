@@ -7,6 +7,7 @@ import {
   getPendingRecoveryOrders,
   retryPendingOrder,
   retryAllPendingOrders,
+  getPlayerProfile,
 } from "../controllers/paymentController.js";
 
 const router = express.Router();
@@ -22,6 +23,8 @@ router.route("/recovery/pending").get(getPendingRecoveryOrders);
 router.route("/recovery/retry-order").post(retryPendingOrder);
 
 router.route("/recovery/retry-all").post(retryAllPendingOrders);
+
+router.route("/player/:orderId").get(getPlayerProfile);
 
 router
   .route("/cashfree/webhook")

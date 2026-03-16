@@ -935,3 +935,34 @@ export const retryAllPendingOrders = async (req, res) => {
     });
   }
 };
+
+export const getPlayerProfile = async (req, res) => {
+  const { orderId } = req.params;
+  if (!orderId) {
+    return res.status(400).json({
+      success: false,
+      message: "orderId is required",
+    });
+  }
+
+  try {
+    const profile = await getPendingRegistration(orderId);
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: "Profile not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      profile,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Error fetching profile",
+      error: error.message,
+    });
+  }
+};

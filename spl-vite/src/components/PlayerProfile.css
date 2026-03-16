@@ -1,0 +1,176 @@
+.player-profile-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  z-index: 10000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Inter', sans-serif;
+}
+
+.profile-card {
+  width: 100%;
+  max-width: 900px;
+  background: white;
+  box-shadow: 0 0 30px rgba(0,0,0,0.1);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+
+.profile-header {
+  background: #000;
+  color: white;
+  padding: 15px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 30% 100%);
+  margin-left: 30%;
+}
+
+.header-logo {
+  position: absolute;
+  left: 30px;
+  top: 15px;
+  font-style: italic;
+  font-weight: 800;
+  font-size: 24px;
+}
+
+.header-logo span {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.profile-title {
+  font-size: 32px;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 1px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 32px;
+  cursor: pointer;
+  color: #555;
+  padding: 0;
+}
+
+.profile-content {
+  display: flex;
+  padding: 30px;
+  gap: 40px;
+}
+
+.left-panel {
+  flex: 0 0 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.profile-photo-container {
+  width: 100%;
+  aspect-ratio: 3/4;
+  border: 2px solid #000;
+  overflow: hidden;
+  background: #f0f0f0;
+}
+
+.profile-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.name-banner {
+  background: #000;
+  color: white;
+  padding: 20px;
+  text-align: center;
+  font-weight: 900;
+  font-size: 32px;
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.right-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.profile-table td {
+  padding: 12px 0;
+  vertical-align: top;
+}
+
+.label-cell {
+  font-weight: 700;
+  width: 180px;
+  font-size: 18px;
+  text-align: right;
+  padding-right: 25px !important;
+}
+
+.value-cell {
+  font-size: 18px;
+  color: #333;
+}
+
+.status-badge {
+  background: #e1f5e9;
+  color: #2e7d32;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 14px;
+  display: inline-block;
+  text-transform: uppercase;
+}
+
+@media (max-width: 768px) {
+  .profile-content {
+    flex-direction: column;
+    padding: 20px;
+  }
+  .left-panel {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+  .profile-header {
+    margin-left: 0;
+    clip-path: none;
+    padding: 10px 20px;
+  }
+  .header-logo {
+    display: none;
+  }
+  .label-cell {
+    width: 120px;
+    font-size: 14px;
+    padding-right: 15px !important;
+  }
+  .value-cell {
+    font-size: 14px;
+  }
+  .profile-title {
+    font-size: 20px;
+  }
+  .name-banner {
+    font-size: 24px;
+  }
+}

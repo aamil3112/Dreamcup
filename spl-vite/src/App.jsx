@@ -8,6 +8,7 @@ import TermsConditions from './components/TermsConditions'
 import RefundCancellationPolicy from './components/RefundCancellationPolicy'
 import ContactUs from './components/ContactUs'
 import SiteFooter from './components/SiteFooter'
+import PlayerProfile from './components/PlayerProfile'
 
 function App() {
   const [isLoading, setIsLoading] = useState(true)
@@ -35,6 +36,7 @@ function App() {
           <Route path="/terms-and-conditions" element={<TermsConditions />} />
           <Route path="/refund-policy" element={<RefundCancellationPolicy />} />
           <Route path="/contact-us" element={<ContactUs />} />
+          <Route path="/profile/:orderId" element={<PlayerProfile />} />
         </Routes>
         <SiteFooter />
       </div>
