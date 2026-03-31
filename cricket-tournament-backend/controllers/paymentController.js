@@ -11,35 +11,71 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PENDING_REGISTRATIONS_FILE = path.join(__dirname, "..", "data", "pending-registrations.json");
 const orderSaveLocks = new Map();
+let isRecoveryRunning = false;
 
-const readPendingRegistrations = async () => {
+let _fileAccessLock = Promise.resolve();
+
+const withFileLock = async (task) => {
+  const prevLock = _fileAccessLock;
+  let release;
+  _fileAccessLock = new Promise(resolve => { release = resolve; });
   try {
-    const raw = await fs.readFile(PENDING_REGISTRATIONS_FILE, "utf-8");
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      return {};
-    }
-    throw error;
+    await prevLock;
+    return await task();
+  } finally {
+    release();
   }
 };
 
+const readPendingRegistrations = async () => {
+  return withFileLock(async () => {
+    try {
+      const raw = await fs.readFile(PENDING_REGISTRATIONS_FILE, "utf-8");
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        return {};
+      }
+      throw error;
+    }
+  });
+};
+
 const writePendingRegistrations = async (data) => {
-  await fs.mkdir(path.dirname(PENDING_REGISTRATIONS_FILE), { recursive: true });
-  await fs.writeFile(PENDING_REGISTRATIONS_FILE, JSON.stringify(data, null, 2), "utf-8");
+  return withFileLock(async () => {
+    await fs.mkdir(path.dirname(PENDING_REGISTRATIONS_FILE), { recursive: true });
+    await fs.writeFile(PENDING_REGISTRATIONS_FILE, JSON.stringify(data, null, 2), "utf-8");
+  });
 };
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const upsertPendingRegistration = async (orderId, payload) => {
-  const allPending = await readPendingRegistrations();
-  allPending[orderId] = {
-    ...(allPending[orderId] || {}),
-    ...payload,
-    updatedAt: new Date().toISOString(),
-  };
-  await writePendingRegistrations(allPending);
+  // Read and write within the same lock block!
+  return withFileLock(async () => {
+    try {
+      const raw = await fs.readFile(PENDING_REGISTRATIONS_FILE, "utf-8");
+      const allPending = JSON.parse(raw) || {};
+      allPending[orderId] = {
+        ...(allPending[orderId] || {}),
+        ...payload,
+        updatedAt: new Date().toISOString(),
+      };
+      await fs.mkdir(path.dirname(PENDING_REGISTRATIONS_FILE), { recursive: true });
+      await fs.writeFile(PENDING_REGISTRATIONS_FILE, JSON.stringify(allPending, null, 2), "utf-8");
+    } catch (err) {
+      if (err.code === "ENOENT") {
+        const initial = {
+          [orderId]: { ...payload, updatedAt: new Date().toISOString() }
+        };
+        await fs.mkdir(path.dirname(PENDING_REGISTRATIONS_FILE), { recursive: true });
+        await fs.writeFile(PENDING_REGISTRATIONS_FILE, JSON.stringify(initial, null, 2), "utf-8");
+      } else {
+        throw err;
+      }
+    }
+  });
 };
 
 const getPendingRegistration = async (orderId) => {
@@ -48,20 +84,24 @@ const getPendingRegistration = async (orderId) => {
 };
 
 const markRegistrationSaved = async (orderId, paymentId) => {
-  const allPending = await readPendingRegistrations();
-  if (!allPending[orderId]) {
-    return;
-  }
+  return withFileLock(async () => {
+    try {
+      const raw = await fs.readFile(PENDING_REGISTRATIONS_FILE, "utf-8");
+      const allPending = JSON.parse(raw) || {};
+      if (!allPending[orderId]) return;
 
-  allPending[orderId] = {
-    ...allPending[orderId],
-    status: "REGISTERED",
-    paymentId,
-    savedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-
-  await writePendingRegistrations(allPending);
+      allPending[orderId] = {
+        ...allPending[orderId],
+        status: "REGISTERED",
+        paymentId,
+        savedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      await fs.writeFile(PENDING_REGISTRATIONS_FILE, JSON.stringify(allPending, null, 2), "utf-8");
+    } catch (err) {
+      if (err.code !== "ENOENT") throw err;
+    }
+  });
 };
 
 const withOrderSaveLock = async (orderId, task) => {
@@ -887,50 +927,88 @@ export const retryPendingOrder = async (req, res) => {
 
 export const retryAllPendingOrders = async (req, res) => {
   try {
+    if (isRecoveryRunning) {
+      return res.status(429).json({
+        success: false,
+        message: "Recovery task is already running in the background. Please wait for it to complete.",
+      });
+    }
+
     const allPending = await readPendingRegistrations();
     const orderIds = Object.keys(allPending || {});
     const targets = orderIds.filter((orderId) => allPending[orderId]?.status !== "REGISTERED");
 
-    const results = [];
-    const CONCURRENCY_LIMIT = 5;
-    
-    // Process in chunks to avoid overwhelming the external APIs and hitting timeouts
-    for (let i = 0; i < targets.length; i += CONCURRENCY_LIMIT) {
-      const chunk = targets.slice(i, i + CONCURRENCY_LIMIT);
-      const chunkPromises = chunk.map(async (orderId) => {
-        try {
-          return await tryRecoverSingleOrder(orderId);
-        } catch (error) {
-          return {
-            orderId,
-            success: false,
-            skipped: false,
-            reason: "RECOVERY_ERROR",
-            error: error?.response?.data || error?.message,
-          };
-        }
+    if (targets.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No pending registrations found to recover.",
+        attempted: 0,
       });
-      
-      const chunkResults = await Promise.all(chunkPromises);
-      results.push(...chunkResults);
     }
 
-    const recovered = results.filter((r) => r.success && !r.skipped).length;
-    const failed = results.filter((r) => !r.success && !r.skipped).length;
-    const skipped = results.filter((r) => r.skipped).length;
+    // Set the flag to true to prevent multiple concurrent recovery tasks
+    isRecoveryRunning = true;
 
-    return res.status(200).json({
+    // Wait a brief moment before starting background task to allow HTTP response to flush avoiding 502
+    setTimeout(() => {
+      (async () => {
+        console.log(`[Recovery] Starting background task for ${targets.length} orders...`);
+        const results = [];
+        const CONCURRENCY_LIMIT = 5;
+        
+        try {
+          for (let i = 0; i < targets.length; i += CONCURRENCY_LIMIT) {
+            const chunk = targets.slice(i, i + CONCURRENCY_LIMIT);
+            console.log(`[Recovery] Processing chunk ${i / CONCURRENCY_LIMIT + 1} (${chunk.length} orders)...`);
+            
+            const chunkPromises = chunk.map(async (orderId) => {
+              try {
+                return await tryRecoverSingleOrder(orderId);
+              } catch (error) {
+                console.error(`[Recovery] Fatal error for order ${orderId}:`, error?.message);
+                return {
+                  orderId,
+                  success: false,
+                  skipped: false,
+                  reason: "RECOVERY_ERROR",
+                  error: error?.response?.data || error?.message,
+                };
+              }
+            });
+            
+            const chunkResults = await Promise.all(chunkPromises);
+            results.push(...chunkResults);
+          }
+
+          const recovered = results.filter((r) => r.success && !r.skipped).length;
+          const failed = results.filter((r) => !r.success && !r.skipped).length;
+          const skipped = results.filter((r) => r.skipped).length;
+
+          console.log(`[Recovery] Completed background task. Summary: ${recovered} recovered, ${failed} failed, ${skipped} skipped.`);
+        } catch (fatalError) {
+          console.error("[Recovery] Fatal error in background task loop:", fatalError.message);
+        } finally {
+          isRecoveryRunning = false;
+        }
+      })().catch(err => {
+        console.error("[Recovery] Unhandled background task error:", err);
+        isRecoveryRunning = false;
+      });
+    }, 500);
+
+    // Return 202 Accepted to signal task started in background
+    return res.status(202).json({
       success: true,
+      message: `Recovery task started for ${targets.length} registrations. Check server logs for progress.`,
       attempted: targets.length,
-      recovered,
-      failed,
-      skipped,
-      results,
     });
+
+
   } catch (error) {
+    isRecoveryRunning = false;
     return res.status(500).json({
       success: false,
-      message: "Failed to retry pending orders",
+      message: "Failed to initiate recovery task",
       error: error?.message,
     });
   }
